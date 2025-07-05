@@ -69,6 +69,12 @@ struct Args {
     /// Input phenotype file: csv or tsv or any delimited file
     #[clap(short, long)]
     phen_fname: String,
+    /// GFF file for extracting potential causative genes from GWAS
+    #[clap(long)]
+    fname_gff: Option<String>,
+    /// GFF window size (look for genes within gff_window_size of a significant SNP)
+    #[clap(long, default_value_t = 500)]
+    gff_window_size: u64,
     /// Delimiter of the input phenotype file: comma, tab, etc...
     #[clap(long, default_value = ",")]
     phen_delim: String,
@@ -270,10 +276,19 @@ fn main() {
                     gwas::ols_iterate,
                 )
                 .unwrap();
-            let python_scripts: Vec<&str> = [
-                args.generate_plots.then_some(["plot_manhattan.py", "plot_qq.py"].as_slice()).unwrap_or(&[]),
-                args.output_sig_snps_only.then_some(["remove_insig_snps.py"].as_slice()).unwrap_or(&[])
-            ].concat();
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if args.generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = &args.fname_gff {
+                let window_size_str = args.gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if args.output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
             if !python_scripts.is_empty() {
                 output = base::run_python_and_append(&output.clone(), &python_scripts);
             }
@@ -289,10 +304,19 @@ fn main() {
                 &args.output,
             )
             .unwrap();
-            let python_scripts: Vec<&str> = [
-                args.generate_plots.then_some(["plot_manhattan.py", "plot_qq.py"].as_slice()).unwrap_or(&[]),
-                args.output_sig_snps_only.then_some(["remove_insig_snps.py"].as_slice()).unwrap_or(&[])
-            ].concat();
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if args.generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = &args.fname_gff {
+                let window_size_str = args.gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if args.output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
             if !python_scripts.is_empty() {
                 output = base::run_python_and_append(&output.clone(), &python_scripts);
             }
@@ -306,10 +330,19 @@ fn main() {
                     gwas::mle_iterate,
                 )
                 .unwrap();
-            let python_scripts: Vec<&str> = [
-                args.generate_plots.then_some(["plot_manhattan.py", "plot_qq.py"].as_slice()).unwrap_or(&[]),
-                args.output_sig_snps_only.then_some(["remove_insig_snps.py"].as_slice()).unwrap_or(&[])
-            ].concat();
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if args.generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = &args.fname_gff {
+                let window_size_str = args.gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if args.output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
             if !python_scripts.is_empty() {
                 output = base::run_python_and_append(&output.clone(), &python_scripts);
             }
@@ -325,10 +358,19 @@ fn main() {
                 &args.output,
             )
             .unwrap();
-            let python_scripts: Vec<&str> = [
-                args.generate_plots.then_some(["plot_manhattan.py", "plot_qq.py"].as_slice()).unwrap_or(&[]),
-                args.output_sig_snps_only.then_some(["remove_insig_snps.py"].as_slice()).unwrap_or(&[])
-            ].concat();
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if args.generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = &args.fname_gff {
+                let window_size_str = args.gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if args.output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
             if !python_scripts.is_empty() {
                 output = base::run_python_and_append(&output.clone(), &python_scripts);
             }

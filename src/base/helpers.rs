@@ -27,19 +27,24 @@ fn find_start_of_next_line(fname: &String, pos: u64) -> u64 {
 }
 
 /// Run python scripts and append output file names to output string
-pub fn run_python_and_append(output: &str, script_names: &[&str]) -> String {
+pub fn run_python_and_append(output: &str, script_configs: &[(&str, Vec<String>)]) -> String {
     let abs_output = fs::canonicalize(output).expect("Failed to canonicalize output path");
     let scripts_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/python");
 
     let outputs: Vec<String> = std::iter::once(output.to_string())
-        .chain(script_names.iter().map(|script_name| {
+        .chain(script_configs.iter().map(|(script_name, extra_args)| {
             let result: Result<String, Box<dyn std::error::Error>> = (|| {
                 let abs_script = fs::canonicalize(scripts_dir.join(script_name))?;
-                let output = Command::new("python3")
-                    .arg(&abs_script)
-                    .arg(&abs_output)
-                    .output()?;
-
+                let mut cmd = Command::new("python3");
+                cmd.arg(&abs_script)
+                   .arg(&abs_output);
+                
+                // Add extra positional arguments
+                for arg in extra_args {
+                    cmd.arg(arg);
+                }
+                
+                let output = cmd.output()?;
                 if !output.status.success() {
                     return Err(format!("WARNING: {} failed: {}", script_name, String::from_utf8_lossy(&output.stderr)).into());
                 }
