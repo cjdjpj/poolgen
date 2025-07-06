@@ -54,7 +54,7 @@ for gwas_key in gwas_phenotypes:
     plt.legend(title="Chromosome", bbox_to_anchor=(1.05, 1), loc="upper left")
 
     plt.tight_layout()
-    output_path = Path(filename).stem + "_" + gwas_key + "_manhattan.png"
+    output_path = "FILE CREATED: " + Path(filename).stem + "_" + gwas_key + "_manhattan.png"
     output_paths += output_path + "\n"
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches='tight', dpi=300)

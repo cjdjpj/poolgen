@@ -28,7 +28,8 @@ fn find_start_of_next_line(fname: &String, pos: u64) -> u64 {
 
 /// Run python scripts and append output file names to output string
 pub fn run_python_and_append(output: &str, script_configs: &[(&str, Vec<String>)]) -> String {
-    let abs_output = fs::canonicalize(output).expect("Failed to canonicalize output path");
+    let output_filename = output.strip_prefix("FILE CREATED: ") .unwrap_or(output);
+    let abs_output = fs::canonicalize(output_filename).expect("Failed to canonicalize output path");
     let scripts_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/python");
 
     let outputs: Vec<String> = std::iter::once(output.to_string())
@@ -44,12 +45,12 @@ pub fn run_python_and_append(output: &str, script_configs: &[(&str, Vec<String>)
                     cmd.arg(arg);
                 }
                 
-                let output = cmd.output()?;
-                if !output.status.success() {
-                    return Err(format!("WARNING: {} failed: {}", script_name, String::from_utf8_lossy(&output.stderr)).into());
+                let o = cmd.output()?;
+                if !o.status.success() {
+                    return Err(format!("WARNING: {} failed: {}", script_name, String::from_utf8_lossy(&o.stderr)).into());
                 }
 
-                Ok(String::from_utf8_lossy(&output.stdout).to_string())
+                Ok(String::from_utf8_lossy(&o.stdout).to_string())
             })();
 
             result.unwrap_or_else(|e| e.to_string())

@@ -182,10 +182,10 @@ struct Args {
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     let args = Args::parse();
-    let mut output: String = String::from("");
+    let mut output = String::new();
     // Prepare the mandatory inputs
     let mut phen_format = "default".to_string();
-    if args.analysis == String::from("gwalpha") {
+    if args.analysis == "gwalpha" {
         phen_format = "gwalpha_fmt".to_string()
     }
     let phen_col = args
@@ -215,198 +215,134 @@ fn main() {
         max_missingness_rate: args.max_missingness_rate,
         pool_sizes: phen.pool_sizes.clone(),
     };
-    if args.analysis == String::from("pileup2sync") {
+    if args.analysis == "pileup2sync" {
         // PILEUP INPUT
         let file_pileup = base::FilePileup {
             filename: args.fname,
             pool_names: phen.pool_names,
         };
-        output = file_pileup
+        output = format!("FILE CREATED: {}", file_pileup
             .read_analyse_write(
                 &filter_stats,
                 &args.output,
                 &args.n_threads,
                 base::pileup_to_sync,
             )
-            .unwrap();
-    } else if args.analysis == String::from("vcf2sync") {
+            .unwrap());
+    } else if args.analysis == "vcf2sync" {
         // VCF INPUT
         let file_vcf = base::FileVcf {
             filename: args.fname,
         };
-        output = file_vcf
+        output = format!("FILE CREATED: {}", file_vcf
             .read_analyse_write(
                 &filter_stats,
                 &args.output,
                 &args.n_threads,
                 base::vcf_to_sync,
             )
-            .unwrap();
+            .unwrap());
     } else {
         // SYNC INPUT
         let file_sync = base::FileSync {
             filename: args.fname.clone(),
             test: args.analysis.clone(),
         };
-        if args.analysis == String::from("fisher_exact_test") {
-            output = file_sync
+        if args.analysis == "fisher_exact_test" {
+            output = format!("FILE CREATED: {}", file_sync
                 .read_analyse_write(&filter_stats, &args.output, &args.n_threads, tables::fisher)
-                .unwrap();
+                .unwrap());
         } else if args.analysis == String::from("chisq_test") {
-            output = file_sync
+            output = format!("FILE CREATED: {}", file_sync
                 .read_analyse_write(&filter_stats, &args.output, &args.n_threads, tables::chisq)
-                .unwrap();
-        } else if args.analysis == String::from("pearson_corr") {
+                .unwrap());
+        } else if args.analysis == "pearson_corr" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = file_sync_phen
+            output = format!("FILE CREATED: {}", file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &args.output,
                     &args.n_threads,
                     gwas::correlation,
                 )
-                .unwrap();
-        } else if args.analysis == String::from("ols_iter") {
+                .unwrap());
+        } else if args.analysis == "ols_iter" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = file_sync_phen
+            output = format!("FILE CREATED: {}", file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &args.output,
                     &args.n_threads,
                     gwas::ols_iterate,
                 )
-                .unwrap();
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
-
-            if args.generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
-            }
-            if let Some(gff_filename) = &args.fname_gff {
-                let window_size_str = args.gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
-            }
-            if args.output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
-            }
-        } else if args.analysis == String::from("ols_iter_with_kinship") {
+                .unwrap());
+        } else if args.analysis == "ols_iter_with_kinship" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let mut genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, args.keep_p_minus_1, &args.n_threads)
                 .unwrap();
-            output = ols_with_covariate(
+            output = format!("FILE CREATED: {}", ols_with_covariate(
                 &mut genotypes_and_phenotypes,
                 args.xxt_eigen_variance_explained,
                 &args.fname.clone(),
                 &args.output,
             )
-            .unwrap();
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
-
-            if args.generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
-            }
-            if let Some(gff_filename) = &args.fname_gff {
-                let window_size_str = args.gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
-            }
-            if args.output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
-            }
-        } else if args.analysis == String::from("mle_iter") {
+            .unwrap());
+        } else if args.analysis == "mle_iter" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = file_sync_phen
+            output = format!("FILE CREATED: {}", file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &args.output,
                     &args.n_threads,
                     gwas::mle_iterate,
                 )
-                .unwrap();
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
-
-            if args.generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
-            }
-            if let Some(gff_filename) = &args.fname_gff {
-                let window_size_str = args.gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
-            }
-            if args.output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
-            }
-        } else if args.analysis == String::from("mle_iter_with_kinship") {
+                .unwrap());
+        } else if args.analysis == "mle_iter_with_kinship" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, args.keep_p_minus_1, &args.n_threads)
                 .unwrap();
-            output = mle_with_covariate(
+            output = format!("FILE CREATED: {}", mle_with_covariate(
                 &genotypes_and_phenotypes,
                 args.xxt_eigen_variance_explained,
                 &args.fname.clone(),
                 &args.output,
             )
-            .unwrap();
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
-
-            if args.generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
-            }
-            if let Some(gff_filename) = &args.fname_gff {
-                let window_size_str = args.gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
-            }
-            if args.output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
-            }
-        } else if args.analysis == String::from("gwalpha") {
+            .unwrap());
+        } else if args.analysis == "gwalpha" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             if args.gwalpha_method == "LS".to_owned() {
-                output = file_sync_phen
+                output = format!("FILE CREATED: {}", file_sync_phen
                     .read_analyse_write(
                         &filter_stats,
                         &args.output,
                         &args.n_threads,
                         gwas::gwalpha_ls,
                     )
-                    .unwrap()
+                    .unwrap())
             } else {
                 // Defaut is ML, i.e. maximum likelihood estimation
-                output = file_sync_phen
+                output = format!("FILE CREATED: {}", file_sync_phen
                     .read_analyse_write(
                         &filter_stats,
                         &args.output,
                         &args.n_threads,
                         gwas::gwalpha_ml,
                     )
-                    .unwrap()
+                    .unwrap())
             }
-        } else if args.analysis == String::from("sync2csv") {
+        } else if args.analysis == "sync2csv" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = file_sync_phen
+            output = format!("FILE CREATED: {}", file_sync_phen
                 .write_csv(
                     &filter_stats,
                     args.keep_p_minus_1,
                     &args.output,
                     &args.n_threads,
                 )
-                .unwrap();
-        // } else if args.analysis == String::from("impute") {
+                .unwrap());
+        // } else if args.analysis == "impute" {
         //     let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
         //     output = if &args.imputation_method == &"mean".to_owned() {
         //         impute_mean(
@@ -436,7 +372,7 @@ fn main() {
         //         )
         //         .unwrap()
         //     }
-        } else if args.analysis == String::from("genomic_prediction_cross_validation") {
+        } else if args.analysis == "genomic_prediction_cross_validation" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, args.keep_p_minus_1, &args.n_threads)
@@ -466,7 +402,7 @@ fn main() {
             let message = "Predictors for each model are here:\n-".to_owned()
                 + &predictor_files.join("\n-")[..];
             println!("{:?}", message);
-        } else if args.analysis == String::from("fst") {
+        } else if args.analysis == "fst" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, args.keep_p_minus_1, &args.n_threads)
@@ -480,13 +416,13 @@ fn main() {
                 &args.output,
             )
             .unwrap();
-            output = genome_wide + " and " + &per_window[..];
-        } else if args.analysis == String::from("heterozygosity") {
+            output = format!("FILE CREATED: {}", genome_wide + " and " + &per_window[..]);
+        } else if args.analysis == "heterozygosity" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &args.n_threads)
                 .unwrap(); // we need all alleles in each locus
-            output = pi(
+            output = format!("FILE CREATED: {}", pi(
                 &genotypes_and_phenotypes,
                 &args.window_size_bp,
                 &args.window_slide_size_bp,
@@ -494,28 +430,13 @@ fn main() {
                 &args.fname,
                 &args.output,
             )
-            .unwrap();
-        } else if args.analysis == String::from("watterson_estimator") {
+            .unwrap());
+        } else if args.analysis == "watterson_estimator" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &args.n_threads)
                 .unwrap(); // we need all alleles in each locus
-            output = watterson_estimator(
-                &genotypes_and_phenotypes,
-                &file_sync_phen.pool_sizes,
-                &args.window_size_bp,
-                &args.window_slide_size_bp,
-                &args.min_loci_per_window,
-                &args.fname,
-                &args.output,
-            )
-            .unwrap();
-        } else if args.analysis == String::from("tajima_d") {
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            let genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, false, &args.n_threads)
-                .unwrap(); // we need all alleles in each locus
-            output = tajima_d(
+            output = format!("FILE CREATED: {}", watterson_estimator(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
                 &args.window_size_bp,
@@ -524,13 +445,28 @@ fn main() {
                 &args.fname,
                 &args.output,
             )
-            .unwrap();
-        } else if args.analysis == String::from("gudmc") {
+            .unwrap());
+        } else if args.analysis == "tajima_d" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &args.n_threads)
                 .unwrap(); // we need all alleles in each locus
-            output = gudmc(
+            output = format!("FILE CREATED: {}", tajima_d(
+                &genotypes_and_phenotypes,
+                &file_sync_phen.pool_sizes,
+                &args.window_size_bp,
+                &args.window_slide_size_bp,
+                &args.min_loci_per_window,
+                &args.fname,
+                &args.output,
+            )
+            .unwrap());
+        } else if args.analysis == "gudmc" {
+            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let genotypes_and_phenotypes = file_sync_phen
+                .into_genotypes_and_phenotypes(&filter_stats, false, &args.n_threads)
+                .unwrap(); // we need all alleles in each locus
+            output = format!("FILE CREATED: {}", gudmc(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
                 &args.sigma_threshold,
@@ -541,10 +477,36 @@ fn main() {
                 &args.fname,
                 &args.output,
             )
-            .unwrap();
+            .unwrap());
         } else {
              panic!("Invalid analysis utility - please select another utility");
         }
+    }
+
+    // execute python pipeline for gwas
+    match args.analysis.as_str() {
+        "ols_iter"
+        | "ols_iter_with_kinship"
+        | "mle_iter"
+        | "mle_iter_with_kinship" => {
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if args.generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = &args.fname_gff {
+                let window_size_str = args.gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if args.output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
+            if !python_scripts.is_empty() {
+                output = base::run_python_and_append(&output.clone(), &python_scripts);
+            }
+        }
+        _ => {}
     }
     println!("{}", output);
 }

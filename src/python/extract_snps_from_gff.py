@@ -37,4 +37,4 @@ output_path = Path(gff_filename)
 output_path = output_path.with_stem(output_path.stem + "_GWAS_SIG_SNPS")
 gff.to_csv(output_path, sep="\t", header=False, index=False, quoting=3)
 
-print(output_path.name, end="")
+print("FILE CREATED: " + output_path.name, end="")

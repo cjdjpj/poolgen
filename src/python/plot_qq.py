@@ -38,7 +38,7 @@ for gwas_key in gwas_phenotypes:
              bbox=dict(boxstyle="round", facecolor="white", alpha=0.6))
     plt.grid(True)
     plt.tight_layout()
-    output_path = Path(filename).stem + "_" + gwas_key + "_qq.png"
+    output_path = "FILE CREATED: " + Path(filename).stem + "_" + gwas_key + "_qq.png"
     output_paths += output_path + "\n"
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
