@@ -85,9 +85,10 @@ struct Args {
         long,
         use_value_delimiter = true,
         value_delimiter = ',',
+        value_parser = clap::value_parser!(usize),
         default_value = "2"
     )]
-    phen_value_col: Vec<String>,
+    phen_value_col: Vec<usize>,
     /// Number of threads to use for parallel processing
     #[clap(long, default_value_t = 1)]
     n_threads: usize,
@@ -166,14 +167,7 @@ fn main() {
     if args.analysis == "gwalpha" {
         phen_format = "gwalpha_fmt".to_string()
     }
-    let phen_col = args
-        .phen_value_col
-        .into_iter()
-        .map(|x| {
-            x.parse::<usize>()
-                .expect("Invalid integer input for the phenotype column/s (--phen-value-col).")
-        })
-        .collect::<Vec<usize>>();
+    let phen_col = &args.phen_value_col.clone();
     let file_phen = base::FilePhen {
         filename: args.phen_fname.clone(),
         delim: args.phen_delim.clone(),
