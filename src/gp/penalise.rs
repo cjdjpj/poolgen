@@ -2,7 +2,6 @@ use crate::base::*;
 use crate::gp::*;
 use crate::gwas::*;
 use ndarray::{prelude::*, Zip};
-use ndarray_linalg::*;
 use rand::prelude::*;
 
 use std::io::{self, Error, ErrorKind};

@@ -8,9 +8,7 @@ use std::io;
 mod base;
 mod gp;
 mod gwas;
-mod imputation;
 mod popgen;
-mod simulation;
 mod tables;
 use base::{ChunkyReadAnalyseWrite, CrossValidation, LoadAll, Parse, SaveCsv, helpers::parse_valid_freq};
 use gp::{
@@ -18,9 +16,7 @@ use gp::{
     penalise_ridge_like, penalise_ridge_like_with_iterative_proxy_norms,
 };
 use gwas::*;
-use imputation::*;
 use popgen::*;
-use simulation::*;
 
 
 #[derive(Parser, Debug)]
@@ -31,7 +27,7 @@ use simulation::*;
     long_about = "Quantitative and population genetics analyses using pool sequencing data: trying to continue the legacy of the now unmaintained popoolation2 package with the memory safety of Rust."
 )]
 struct Args {
-    /// Analysis to perform (i.e. "pileup2sync", "vcf2sync", "sync2csv", "fisher_exact_test", "chisq_test", "pearson_corr", "ols_iter", "ols_iter_with_kinship", "mle_iter", "mle_iter_with_kinship", "gwalpha", "ridge_iter", "genomic_prediction_cross_validation", "fst", "heterozygosity", "watterson_estimator", "tajima_d", "gudmc", "impute")
+    /// Analysis to perform (i.e. "pileup2sync", "vcf2sync", "sync2csv", "fisher_exact_test", "chisq_test", "pearson_corr", "ols_iter", "ols_iter_with_kinship", "mle_iter", "mle_iter_with_kinship", "gwalpha", "ridge_iter", "genomic_prediction_cross_validation", "fst", "heterozygosity", "watterson_estimator", "tajima_d", "gudmc")
     analysis: String,
     /// Filename of the input pileup or synchronised pileup file (i.e. *.pileup, *.sync, *.syncf, or *.syncx)
     #[clap(short, long)]
@@ -128,24 +124,6 @@ struct Args {
     /// Genomewide unbiased determination of modes of convergent evolution (gudmc), i.e. recombination rate in centiMorgan per megabase (default from cM/Mb estimate in maize from [here](https://genomebiology.biomedcentral.com/articles/10.1186/gb-2013-14-9-r103#Sec7))
     #[clap(long, default_value_t = 0.73, value_parser = parse_valid_freq)]
     recombination_rate_cm_per_mb: f64,
-    // /// Imputation parameter, i.e. minimum depth to set to missing data for imputation
-    // #[clap(long, default_value_t = 5.00)]
-    // min_depth_set_to_missing: f64,
-    // /// Imputation parameter, i.e. fraction of the pools with missing data to be ommited after sorting by rate of missingness
-    // #[clap(long, default_value_t = 0.10, value_parser = parse_valid_freq)]
-    // frac_top_missing_pools: f64,
-    // /// Imputation parameter, i.e. fraction of the loci with missing data to be ommited after sorting by rate of missingness
-    // #[clap(long, default_value_t = 0.10, value_parser = parse_valid_freq)]
-    // frac_top_missing_loci: f64,
-    // /// Imputation parameter, i.e. imputation method, select from "mean" for simple imputation using mean allele frequencies across non-missing pools, or "aLD-kNNi" for adaptive linkage disequillibrium (estimated using correlations within a window) k-nearest neighbour weighted allele frequencies imputation
-    // #[clap(long, default_value = "aLD-kNNi")]
-    // imputation_method: String,
-    // /// Imputation parameter, i.e. maximum number of top correlated loci within the window which are considered in linkage disequillibrium (LD) with the locus requiring imputation. The resulting loci will be used to calculate pairwise distances (adaptive if we have too much missing data in the window at which point we use all the loci within the window).
-    // #[clap(long, default_value_t = 10)]
-    // n_loci_to_estimate_distance: u64,
-    // /// Imputation parameter, i.e. number of nearest neighbours from which the imputed weighted (weights based on distance from the pool requiring imputation) mean allele frequencies will be calculated from.
-    // #[clap(long, default_value_t = 5)]
-    // k_neighbours: u64,
 }
 
 /// # poolgen: quantitative and population genetics on pool sequencing (Pool-seq) data
@@ -342,36 +320,6 @@ fn main() {
                     &args.n_threads,
                 )
                 .unwrap());
-        // } else if args.analysis == "impute" {
-        //     let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-        //     output = if &args.imputation_method == &"mean".to_owned() {
-        //         impute_mean(
-        //             &file_sync_phen,
-        //             &filter_stats,
-        //             &args.min_depth_set_to_missing,
-        //             &args.frac_top_missing_pools,
-        //             &args.frac_top_missing_loci,
-        //             &args.n_threads,
-        //             &args.output,
-        //         )
-        //         .unwrap()
-        //     } else {
-        //         impute_aLDkNN(
-        //             &file_sync_phen,
-        //             &filter_stats,
-        //             &args.min_depth_set_to_missing,
-        //             &args.frac_top_missing_pools,
-        //             &args.frac_top_missing_loci,
-        //             &args.window_size_bp,
-        //             &args.window_slide_size_bp,
-        //             &args.min_loci_per_window,
-        //             &args.n_loci_to_estimate_distance,
-        //             &args.k_neighbours,
-        //             &args.n_threads,
-        //             &args.output,
-        //         )
-        //         .unwrap()
-        //     }
         } else if args.analysis == "genomic_prediction_cross_validation" {
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             let genotypes_and_phenotypes = file_sync_phen
@@ -454,23 +402,6 @@ fn main() {
             output = format!("FILE CREATED: {}", tajima_d(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
-                &args.window_size_bp,
-                &args.window_slide_size_bp,
-                &args.min_loci_per_window,
-                &args.fname,
-                &args.output,
-            )
-            .unwrap());
-        } else if args.analysis == "gudmc" {
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            let genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, false, &args.n_threads)
-                .unwrap(); // we need all alleles in each locus
-            output = format!("FILE CREATED: {}", gudmc(
-                &genotypes_and_phenotypes,
-                &file_sync_phen.pool_sizes,
-                &args.sigma_threshold,
-                &args.recombination_rate_cm_per_mb,
                 &args.window_size_bp,
                 &args.window_slide_size_bp,
                 &args.min_loci_per_window,

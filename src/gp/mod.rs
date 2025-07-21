@@ -1,4 +1,4 @@
-pub use self::{cv::*, ols::*, penalise::*};
+pub use self::{ols::*, penalise::*};
 
 mod cv;
 mod ols;

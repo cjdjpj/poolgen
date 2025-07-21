@@ -209,17 +209,17 @@ impl
             }
         }
         Ok(PredictionPerformance {
-            n: n,
-            p: p,
-            k: k,
-            r: r,
-            models: models,
-            y_validation_and_predicted: y_validation_and_predicted,
-            cor: cor,
-            mbe: mbe,
-            mae: mae,
-            mse: mse,
-            rmse: rmse,
+            n,
+            p,
+            k,
+            r,
+            models,
+            y_validation_and_predicted,
+            cor,
+            mbe,
+            mae,
+            mse,
+            rmse,
         })
     }
 

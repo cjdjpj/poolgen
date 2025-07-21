@@ -1,4 +1,4 @@
-pub use self::{helpers::*, phen::*, pileup::*, structs_and_traits::*, sync::*, vcf::*};
+pub use self::{helpers::*, pileup::*, structs_and_traits::*, vcf::*};
 
 pub mod helpers;
 mod phen;
