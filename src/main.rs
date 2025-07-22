@@ -132,20 +132,70 @@ enum Utility {
     PearsonCorr { },
     /// Find the strength of association between phenotypes (csv format) and allele frequencies (sync format) per locus using ordinary least squares (OLS) regression
     #[clap(name = "ols_iter")]
-    OlsIter { },
+    OlsIter { 
+        /// Generate plots (relevant to analysis tool)
+        #[clap(long, action)]
+        generate_plots: bool,
+        /// GFF file for extracting potential causative genes from GWAS
+        #[clap(long)]
+        fname_gff: Option<String>,
+        /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
+        #[clap(long, action)]
+        output_sig_snps_only: bool,
+        /// GFF window size (look for genes within gff_window_size of a significant SNP)
+        #[clap(long, default_value_t = 500)]
+        gff_window_size: u64,
+    },
     /// Similar to ols_iter but controls for the effects of kinship
     #[clap(name = "ols_iter_with_kinship")]
     OlsIterWithKinship {
+        /// Generate plots (relevant to analysis tool)
+        #[clap(long, action)]
+        generate_plots: bool,
+        /// GFF file for extracting potential causative genes from GWAS
+        #[clap(long)]
+        fname_gff: Option<String>,
+        /// GFF window size (look for genes within gff_window_size of a significant SNP)
+        #[clap(long, default_value_t = 500)]
+        gff_window_size: u64,
+        /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
+        #[clap(long, action)]
+        output_sig_snps_only: bool,
         /// GWAS iterative OLS using some of the kinship matrix's PCs as covariate
         #[clap(short, long, default_value_t = 0.75, value_parser = parse_valid_freq)]
         xxt_eigen_variance_explained: f64,
     },
     /// Similar to ols_iter but uses maximum likelihood estimation
     #[clap(name = "mle_iter")]
-    MleIter { },
+    MleIter {
+        /// Generate plots (relevant to analysis tool)
+        #[clap(long, action)]
+        generate_plots: bool,
+        /// GFF file for extracting potential causative genes from GWAS
+        #[clap(long)]
+        fname_gff: Option<String>,
+        /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
+        #[clap(long, action)]
+        output_sig_snps_only: bool,
+        /// GFF window size (look for genes within gff_window_size of a significant SNP)
+        #[clap(long, default_value_t = 500)]
+        gff_window_size: u64,
+    },
     /// Similar to ols_iter_with_kinship but uses maximum likelihood estimation
     #[clap(name = "mle_iter_with_kinship")]
     MleIterWithKinship {
+        /// Generate plots (relevant to analysis tool)
+        #[clap(long, action)]
+        generate_plots: bool,
+        /// GFF file for extracting potential causative genes from GWAS
+        #[clap(long)]
+        fname_gff: Option<String>,
+        /// GFF window size (look for genes within gff_window_size of a significant SNP)
+        #[clap(long, default_value_t = 500)]
+        gff_window_size: u64,
+        /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
+        #[clap(long, action)]
+        output_sig_snps_only: bool,
         /// GWAS iterative OLS using some of the kinship matrix's PCs as covariate
         #[clap(short, long, default_value_t = 0.75, value_parser = parse_valid_freq)]
         xxt_eigen_variance_explained: f64,
@@ -369,7 +419,7 @@ fn main() {
                 )
                 .unwrap());
         }
-        Utility::OlsIter { } => {
+        Utility::OlsIter { generate_plots, fname_gff, gff_window_size, output_sig_snps_only } => {
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "ols_iter".to_string()
@@ -383,8 +433,25 @@ fn main() {
                     gwas::ols_iterate,
                 )
                 .unwrap());
+
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = fname_gff {
+                let window_size_str = gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
+            if !python_scripts.is_empty() {
+                output = base::run_python_and_append(&output.clone(), &python_scripts);
+            }
         }
-        Utility::OlsIterWithKinship { xxt_eigen_variance_explained } => {
+        Utility::OlsIterWithKinship {  generate_plots, fname_gff, gff_window_size, output_sig_snps_only, xxt_eigen_variance_explained } => {
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "ols_iter_with_kinship".to_string()
@@ -400,8 +467,24 @@ fn main() {
                 &general_args.output,
             )
             .unwrap());
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = fname_gff {
+                let window_size_str = gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
+            if !python_scripts.is_empty() {
+                output = base::run_python_and_append(&output.clone(), &python_scripts);
+            }
         }
-        Utility::MleIter { } => {
+        Utility::MleIter { generate_plots, fname_gff, gff_window_size, output_sig_snps_only} => {
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "mle_iter".to_string()
@@ -415,8 +498,24 @@ fn main() {
                     gwas::mle_iterate,
                 )
                 .unwrap());
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = fname_gff {
+                let window_size_str = gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
+            if !python_scripts.is_empty() {
+                output = base::run_python_and_append(&output.clone(), &python_scripts);
+            }
         }
-        Utility::MleIterWithKinship { xxt_eigen_variance_explained } => {
+        Utility::MleIterWithKinship {  generate_plots, fname_gff, gff_window_size, output_sig_snps_only, xxt_eigen_variance_explained } => {
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "mle_iter_with_kinship".to_string()
@@ -432,6 +531,22 @@ fn main() {
                 &general_args.output,
             )
             .unwrap());
+            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+
+            if generate_plots {
+                python_scripts.push(("plot_manhattan.py", vec![]));
+                python_scripts.push(("plot_qq.py", vec![]));
+            }
+            if let Some(gff_filename) = fname_gff {
+                let window_size_str = gff_window_size.to_string();
+                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+            }
+            if output_sig_snps_only {
+                python_scripts.push(("remove_insig_snps.py", vec![]));
+            }
+            if !python_scripts.is_empty() {
+                output = base::run_python_and_append(&output.clone(), &python_scripts);
+            }
         }
         Utility::Gwalpha { gwalpha_method } => {
             let file_sync = base::FileSync {

@@ -92,9 +92,9 @@ impl Parse<Phen> for FilePhen {
                 }
             }
             return Ok(Box::new(Phen {
-                pool_names: pool_names,
-                pool_sizes: pool_sizes,
-                phen_matrix: phen_matrix,
+                pool_names,
+                pool_sizes,
+                phen_matrix,
             }));
         } else if self.format == "gwalpha_fmt".to_string() {
             ////////////////////
@@ -153,9 +153,9 @@ impl Parse<Phen> for FilePhen {
                 pool_names.push("pool-".to_owned() + &i.to_string()[..]);
             }
             return Ok(Box::new(Phen {
-                pool_names: pool_names,
+                pool_names,
                 pool_sizes: bins.iter().copied().collect::<Vec<f64>>(), // pool sizes, i.e. bins in the GWAlpha.py format is found in phen_matrix
-                phen_matrix: phen_matrix,
+                phen_matrix,
             }));
         } else {
             return Err(Error::new(
@@ -177,11 +177,11 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             let phen = self.1.lparse().unwrap();
             return Ok(Box::new(FileSyncPhen {
-                filename_sync: filename_sync,
+                filename_sync,
                 pool_names: phen.pool_names,
                 pool_sizes: phen.pool_sizes,
                 phen_matrix: phen.phen_matrix,
-                test: test,
+                test,
             }));
         } else if self.1.format == "gwalpha_fmt".to_string() {
             ////////////////////
@@ -189,11 +189,11 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             let phen = self.1.lparse().unwrap();
             return Ok(Box::new(FileSyncPhen {
-                filename_sync: filename_sync,
+                filename_sync,
                 pool_names: phen.pool_names,
                 pool_sizes: vec![f64::NAN], // pool sizes, i.e. bins in the GWAlpha.py format is found in phen_matrix
                 phen_matrix: phen.phen_matrix,
-                test: test,
+                test
             }));
         } else {
             return Err(Error::new(

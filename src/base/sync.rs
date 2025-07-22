@@ -147,10 +147,10 @@ impl Parse<LocusCounts> for String {
             }
         }
         return Ok(Box::new(LocusCounts {
-            chromosome: chromosome,
-            position: position,
-            alleles_vector: alleles_vector,
-            matrix: matrix, // n pools x 6 alleles
+            chromosome,
+            position,
+            alleles_vector,
+            matrix, // n pools x 6 alleles
         }));
     }
 }
@@ -187,7 +187,7 @@ impl Filter for LocusCounts {
             chromosome: self.chromosome.clone(),
             position: self.position.clone(),
             alleles_vector: self.alleles_vector.clone(),
-            matrix: matrix,
+            matrix,
         }))
     }
 
@@ -331,7 +331,7 @@ impl Filter for LocusFrequencies {
             chromosome: self.chromosome.clone(),
             position: self.position.clone(),
             alleles_vector: self.alleles_vector.clone(),
-            matrix: matrix,
+            matrix,
         }))
     }
 
@@ -371,7 +371,7 @@ impl Filter for LocusFrequencies {
             chromosome: self.chromosome.clone(),
             position: self.position.clone(),
             alleles_vector: self.alleles_vector.clone(),
-            matrix: matrix,
+            matrix,
         }))
     }
 
@@ -1168,13 +1168,13 @@ impl LoadAll for FileSyncPhen {
         // println!("position[2]={:?}", position[2]);
         // println!("position[3]={:?}", position[3]);
         Ok(GenotypesAndPhenotypes {
-            chromosome: chromosome,
-            position: position,
-            allele: allele,
+            chromosome,
+            position,
+            allele,
             intercept_and_allele_frequencies: mat,
             phenotypes: self.phen_matrix.clone(),
             pool_names: self.pool_names.clone(),
-            coverages: coverages,
+            coverages,
         })
     }
 }
@@ -1376,7 +1376,7 @@ mod tests {
         assert_eq!((), locus_frequncies.check().unwrap());
         // (03) CheckStruct: LocusCountsAndPhenotypes
         let mut locus_counts_and_phenotypes = LocusCountsAndPhenotypes {
-            locus_counts: locus_counts,
+            locus_counts,
             phenotypes: Array2::from_shape_vec((4, 1), vec![0.1, 0.2, 0.3, 0.4]).unwrap(),
             pool_names: (1..5)
                 .map(|x| "Pop".to_owned() + &x.to_string()[..])
