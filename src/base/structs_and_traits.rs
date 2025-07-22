@@ -1,5 +1,7 @@
 //! Structs and Traits
 
+use clap::Args;
+use crate::parse_valid_freq;
 use ndarray::prelude::*;
 use std::io;
 
@@ -210,6 +212,91 @@ pub struct PredictionPerformance {
     pub mae: Array4<f64>, // reps x folds x models x traits
     pub mse: Array4<f64>, // reps x folds x models x traits
     pub rmse: Array4<f64>, // reps x folds x models x traits
+}
+
+#[derive(Args)]
+#[clap(next_help_heading = "General")]
+pub struct GeneralArgs {
+    /// Filename of the input pileup or synchronised pileup file (i.e. *.pileup, *.sync, *.syncf, or *.syncx)
+    #[clap(short, long)]
+    pub fname: String,
+    /// Output filename
+    #[clap(short, long, default_value = "")]
+    pub output: String,
+    /// Number of threads to use for parallel processing
+    #[clap(long, default_value_t = 1)]
+    pub n_threads: usize,
+}
+
+#[derive(Args)]
+#[clap(next_help_heading = "Phenotype")]
+pub struct PhenotypeArgs {
+    /// Input phenotype file: csv or tsv or any delimited file
+    #[clap(short, long)]
+    pub phen_fname: String,
+    /// Delimiter of the input phenotype file: comma, tab, etc...
+    #[clap(long, default_value = ",")]
+    pub phen_delim: String,
+    /// Column index containing the names or IDs of the indivudals in the input phenotype file: 0, 1, 2, ...
+    #[clap(long, default_value_t = 0)]
+    pub phen_name_col: usize,
+    /// Column index containing the the sizes of each pool or population: 0, 1, 2, ...
+    #[clap(long, default_value_t = 1)]
+    pub phen_pool_size_col: usize,
+    /// Column indexes containing the phenotype values in the input phenotype file, e.g. 1 or 1,2,3 or 1,2,3,4 etc ...
+    #[clap(
+        long,
+        use_value_delimiter = true,
+        value_delimiter = ',',
+        value_parser = clap::value_parser!(usize),
+        default_value = "2",
+        global = true
+    )]
+    pub phen_value_col: Vec<usize>,
+}
+
+
+#[derive(Args)]
+#[clap(next_help_heading = "Filtering")]
+pub struct FilterArgs {
+    /// Categorize lowercase reference reads in pileup as unclassified ('N')
+    #[clap(long, action)]
+    pub keep_lowercase_reference: bool,
+    /// Keep ambiguous reads during SNP filtering, i.e. keep them coded as Ns
+    #[clap(long, action)]
+    pub keep_ns: bool,
+    /// Sync to csv file conversion to include all alleles or just p-1 excluding the minimum allele
+    #[clap(long, action)]
+    pub keep_p_minus_1: bool,
+    /// Maximum base sequencing error rate
+    #[clap(long, default_value_t = 0.01, value_parser = parse_valid_freq)]
+    pub max_base_error_rate: f64,
+    /// Minimum breadth of coverage (loci with less than this proportion of pools below min_coverage_depth will be omitted)
+    #[clap(long, default_value_t = 1.0, value_parser = parse_valid_freq)]
+    pub min_coverage_breadth: f64,
+    /// Minimum depth of coverage (loci with less than min_coverage_breadth pools below this threshold will be omitted)
+    #[clap(long, default_value_t = 1)]
+    pub min_coverage_depth: u64,
+    /// Minimum allele frequency (per locus, alleles which fail to pass this threshold will be omitted allowing control over multiallelic loci)
+    #[clap(long, default_value_t = 0.001, value_parser = parse_valid_freq)]
+    pub min_allele_frequency: f64,
+    /// Maximum missingness rate (loci with missing data beyond this threshold will be omitted)
+    #[clap(long, default_value_t = 0.0, value_parser = parse_valid_freq)]
+    pub max_missingness_rate: f64,
+}
+
+#[derive(Args)]
+#[clap(next_help_heading = "Window")]
+pub struct WindowArgs {
+    /// Estimation of population genetics parameters per window, i.e. fst, pi, Watterson's theta, and Tajima's D per population per window: window size in terms of number of bases
+    #[clap(long, default_value_t = 100)]
+    pub window_size_bp: u64,
+    /// Number of bases to slide the window (a good start will be half the window size)
+    #[clap(long, default_value_t = 50)]
+    pub window_slide_size_bp: u64,
+    /// Estimation of population genetics parameters per window, i.e. fst, pi, Watterson's theta, and Tajima's D per population per window: minimum number of loci per window
+    #[clap(long, default_value_t = 10)]
+    pub min_loci_per_window: u64,
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -60,6 +60,35 @@ pub fn run_python_and_append(output: &str, script_configs: &[(&str, Vec<String>)
     outputs.join("\n")
 }
 
+pub fn prepare_phen(
+    phenotype_args: &PhenotypeArgs,
+    phen_format: String,
+) -> FilePhen {
+    let phen_col = phenotype_args.phen_value_col.clone();
+
+    FilePhen {
+        filename: phenotype_args.phen_fname.clone(),
+        delim: phenotype_args.phen_delim.clone(),
+        names_column_id: phenotype_args.phen_name_col,
+        sizes_column_id: phenotype_args.phen_pool_size_col,
+        trait_values_column_ids: phen_col,
+        format: phen_format,
+    }
+}
+
+pub fn prepare_filterstats(filter_args: &FilterArgs, phen: &Box<Phen>) -> FilterStats {
+    FilterStats {
+        remove_ns: !filter_args.keep_ns,
+        keep_lowercase_reference: filter_args.keep_lowercase_reference,
+        max_base_error_rate: filter_args.max_base_error_rate,
+        min_coverage_breadth: filter_args.min_coverage_breadth,
+        min_coverage_depth: filter_args.min_coverage_depth,
+        min_allele_frequency: filter_args.min_allele_frequency,
+        max_missingness_rate: filter_args.max_missingness_rate,
+        pool_sizes: phen.pool_sizes.clone(),
+    }
+}
+
 /// Detect the cursor positions across the input file corresponding to the splits for parallel computation
 pub fn find_file_splits(fname: &String, n_threads: &usize) -> io::Result<Vec<u64>> {
     let mut file = match File::open(fname) {
