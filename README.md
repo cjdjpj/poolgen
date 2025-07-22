@@ -31,9 +31,7 @@ Quantitative and population genetics analyses using pool sequencing data (i.e. S
 
 ## File formats
 
-## Note
-
-**Header line/s and comments should be prepended by '#'.**
+> NOTE: Header line/s and comments should be prepended by '#'.
 
 ### Pileup
 
@@ -73,9 +71,9 @@ An extension of [popoolation2's](https://academic.oup.com/bioinformatics/article
 - *Column 3*:       reference allele, e.g. A, T, C, G 
 - *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
 
-### Phenotypes
+### Phenotypes (required)
 
-1. A simple delimited file, e.g. "csv" and "tsv" with a column for the individual IDs, and at least one column for the phenotypic values. Header line/s and comments should be prepended by '#'.
+1. A simple delimited file, e.g. "csv" or "tsv" with a column for individual IDs, pool sizes, and at least one column for the phenotypic values.
 
 2. GWAlpha-compatible text file (i.e. "py"):
 
