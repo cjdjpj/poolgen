@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-clap = { version="3.2.23", features=["derive"]}
+clap = { version="4.5.9", features=["derive"]}
 ndarray = { version = "0.15.6", features = ["rayon"]}
 statrs = "0.16.0"
 argmin = "0.8.1"
