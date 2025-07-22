@@ -243,7 +243,7 @@ pub struct PhenotypeArgs {
     /// Column index containing the the sizes of each pool or population: 0, 1, 2, ...
     #[clap(long, default_value_t = 1)]
     pub phen_pool_size_col: usize,
-    /// Column indexes containing the phenotype values in the input phenotype file, e.g. 1 or 1,2,3 or 1,2,3,4 etc ...
+    /// Column indices containing the phenotype values in the input phenotype file, e.g. 1 or 1,2,3 etc ...
     #[clap(
         long,
         use_value_delimiter = true,
@@ -265,7 +265,7 @@ pub struct FilterArgs {
     /// Keep ambiguous reads during SNP filtering, i.e. keep them coded as Ns
     #[clap(long, action)]
     pub keep_ns: bool,
-    /// Sync to csv file conversion to include all alleles or just p-1 excluding the minimum allele
+    /// Include all alleles or just p-1 excluding the minimum allele
     #[clap(long, action)]
     pub keep_p_minus_1: bool,
     /// Maximum base sequencing error rate
@@ -277,7 +277,7 @@ pub struct FilterArgs {
     /// Minimum depth of coverage (loci with less than min_coverage_breadth pools below this threshold will be omitted)
     #[clap(long, default_value_t = 1)]
     pub min_coverage_depth: u64,
-    /// Minimum allele frequency (per locus, alleles which fail to pass this threshold will be omitted allowing control over multiallelic loci)
+    /// Minimum allele frequency (per locus, alleles which fail to pass this threshold will be omitted)
     #[clap(long, default_value_t = 0.001, value_parser = parse_valid_freq)]
     pub min_allele_frequency: f64,
     /// Maximum missingness rate (loci with missing data beyond this threshold will be omitted)
@@ -288,13 +288,13 @@ pub struct FilterArgs {
 #[derive(Args)]
 #[clap(next_help_heading = "Window")]
 pub struct WindowArgs {
-    /// Estimation of population genetics parameters per window, i.e. fst, pi, Watterson's theta, and Tajima's D per population per window: window size in terms of number of bases
+    /// Window size in terms of number of bases
     #[clap(long, default_value_t = 100)]
     pub window_size_bp: u64,
-    /// Number of bases to slide the window (a good start will be half the window size)
+    /// Number of bases to slide the window
     #[clap(long, default_value_t = 50)]
     pub window_slide_size_bp: u64,
-    /// Estimation of population genetics parameters per window, i.e. fst, pi, Watterson's theta, and Tajima's D per population per window: minimum number of loci per window
+    /// Minimum number of loci per window
     #[clap(long, default_value_t = 10)]
     pub min_loci_per_window: u64,
 }

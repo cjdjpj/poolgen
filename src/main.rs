@@ -1,10 +1,10 @@
 //! **poolgen**: quantitative and population genetics on pool sequencing (Pool-seq) data
 
+#![allow(warnings)]
 use clap::{Parser, Subcommand};
 use base::{GeneralArgs, PhenotypeArgs, FilterArgs, WindowArgs, prepare_phen, prepare_filterstats, parse_valid_freq};
 use std::env;
 use ndarray::prelude::*;
-#[allow(warnings)]
 use std::io;
 mod base;
 mod gp;
@@ -21,235 +21,235 @@ use popgen::*;
 
 #[derive(Subcommand)]
 enum Utility {
-    /// Convert a pileup file into a synchronised pileup file with a header
-    #[clap(name = "pileup2sync")]
+    /// Convert a pileup file into a synchronised pileup file (with a header row)
+    #[command(name = "pileup2sync")]
     Pileup2Sync { 
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
     },
-    /// Convert a vcf file into a synchronised pileup file with a header
-    #[clap(name = "vcf2sync")]
+    /// Convert a vcf file into a synchronised pileup file (with a header row)
+    #[command(name = "vcf2sync")]
     Vcf2Sync { 
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
     },
-    /// Convert a synchronised pileup file (sync format) into a smple comma-separated file (csv format)
-    #[clap(name = "sync2csv")]
+    /// Convert a synchronised pileup file (sync format) into a csv of allele frequencies
+    #[command(name = "sync2csv")]
     Sync2Csv { 
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
     },
-    /// Perform Fisher's exact test per locus (sync format)
-    #[clap(name = "fisher_exact_test")]
+    /// Perform Fisher's exact test per locus
+    #[command(name = "fisher_exact_test")]
     FisherExactTest { 
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
     },
-    /// Perform Chi-squared test per locus (sync format)
-    #[clap(name = "chisq_test")]
+    /// Perform Chi-squared test per locus
+    #[command(name = "chisq_test")]
     ChisqTest { 
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
     },
-    /// Find the correlation between phenotypes (csv format) and allele frequencies (sync format) per locus
-    #[clap(name = "pearson_corr")]
+    /// Compute Pearson's correlation between phenotypes and allele frequencies per locus
+    #[command(name = "pearson_corr")]
     PearsonCorr { 
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
     },
-    /// Find the strength of association between phenotypes (csv format) and allele frequencies (sync format) per locus using ordinary least squares (OLS) regression
-    #[clap(name = "ols_iter")]
+    /// Compute genome-wide association (GWAS) per locus using ordinary least squares (OLS) regression
+    #[command(name = "ols_iter")]
     OlsIter {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        /// Generate plots (relevant to analysis tool)
-        #[clap(long, action)]
+        /// Generate GWAS manhattan plot and QQ plot
+        #[clap(long, action, help_heading = "GWAS")]
         generate_plots: bool,
-        /// GFF file for extracting potential causative genes from GWAS
-        #[clap(long)]
+        /// Path to GFF file for extracting potential causative genes from GWAS
+        #[clap(long, help_heading = "GWAS")]
         fname_gff: Option<String>,
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
-        #[clap(long, action)]
+        #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
         /// GFF window size (look for genes within gff_window_size of a significant SNP)
-        #[clap(long, default_value_t = 500)]
+        #[clap(long, default_value_t = 500, help_heading = "GWAS")]
         gff_window_size: u64,
     },
-    /// Similar to ols_iter but controls for the effects of kinship
-    #[clap(name = "ols_iter_with_kinship")]
+    /// Compute GWAS with OLE, but controlling for kinship
+    #[command(name = "ols_iter_with_kinship")]
     OlsIterWithKinship {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        /// Generate plots (relevant to analysis tool)
-        #[clap(long, action)]
+        /// Generate GWAS manhattan plot and QQ plot
+        #[clap(long, action, help_heading = "GWAS")]
         generate_plots: bool,
         /// GFF file for extracting potential causative genes from GWAS
-        #[clap(long)]
+        #[clap(long, help_heading = "GWAS")]
         fname_gff: Option<String>,
         /// GFF window size (look for genes within gff_window_size of a significant SNP)
-        #[clap(long, default_value_t = 500)]
+        #[clap(long, default_value_t = 500, help_heading = "GWAS")]
         gff_window_size: u64,
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
-        #[clap(long, action)]
+        #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
         /// GWAS iterative OLS using some of the kinship matrix's PCs as covariate
-        #[clap(short, long, default_value_t = 0.75, value_parser = parse_valid_freq)]
+        #[clap(short, long, default_value_t = 0.75, value_parser = parse_valid_freq, help_heading = "GWAS")]
         xxt_eigen_variance_explained: f64,
     },
-    /// Similar to ols_iter but uses maximum likelihood estimation
-    #[clap(name = "mle_iter")]
+    /// Compute genome-wide association (GWAS) per locus using maximum likelihood estimation (MLE)
+    #[command(name = "mle_iter")]
     MleIter {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        /// Generate plots (relevant to analysis tool)
-        #[clap(long, action)]
+        /// Generate GWAS manhattan plot and QQ plot
+        #[clap(long, action, help_heading = "GWAS")]
         generate_plots: bool,
         /// GFF file for extracting potential causative genes from GWAS
-        #[clap(long)]
+        #[clap(long, help_heading = "GWAS")]
         fname_gff: Option<String>,
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
-        #[clap(long, action)]
+        #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
         /// GFF window size (look for genes within gff_window_size of a significant SNP)
-        #[clap(long, default_value_t = 500)]
+        #[clap(long, default_value_t = 500, help_heading = "GWAS")]
         gff_window_size: u64,
     },
-    /// Similar to ols_iter_with_kinship but uses maximum likelihood estimation
-    #[clap(name = "mle_iter_with_kinship")]
+    /// Compute GWAS with MLE, but controlling for kinship
+    #[command(name = "mle_iter_with_kinship")]
     MleIterWithKinship {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        /// Generate plots (relevant to analysis tool)
-        #[clap(long, action)]
+        /// Generate GWAS manhattan plot and QQ plot
+        #[clap(long, action, help_heading = "GWAS")]
         generate_plots: bool,
         /// GFF file for extracting potential causative genes from GWAS
-        #[clap(long)]
+        #[clap(long, help_heading = "GWAS")]
         fname_gff: Option<String>,
         /// GFF window size (look for genes within gff_window_size of a significant SNP)
-        #[clap(long, default_value_t = 500)]
+        #[clap(long, default_value_t = 500, help_heading = "GWAS")]
         gff_window_size: u64,
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
-        #[clap(long, action)]
+        #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
         /// GWAS iterative OLS using some of the kinship matrix's PCs as covariate
-        #[clap(short, long, default_value_t = 0.75, value_parser = parse_valid_freq)]
+        #[clap(short, long, default_value_t = 0.75, value_parser = parse_valid_freq, help_heading = "GWAS")]
         xxt_eigen_variance_explained: f64,
     },
     /// Parametric allele effect estimation using Pool-seq data
-    #[clap(name = "gwalpha")]
+    #[command(name = "gwalpha")]
     Gwalpha {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
         /// GWAlpha inference method to use: "LS" for least squares or "ML" for maximum likelihood estimation
-        #[clap(long, default_value = "ML")]
+        #[clap(long, default_value = "ML", help_heading = "GWAlpha")]
         gwalpha_method: String,
     },
     /// Perform genomic prediction with cross-validation
-    #[clap(name = "genomic_prediction_cross_validation")]
+    #[command(name = "genomic_prediction_cross_validation")]
     GenomicPredictionCrossValidation {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        /// Genomic prediction cross-validation: number of replicates of k-fold cross-validation
-        #[clap(long, default_value_t = 3)]
+        /// Number of replicates of k-fold cross-validation
+        #[clap(long, default_value_t = 3, help_heading = "Genomic Prediction Cross Validation")]
         n_reps: usize,
         /// Genomic prediction cross-validation: number of k-fold validations, i.e. number of time the data will be partitioned for training and testing each model
-        #[clap(long, default_value_t = 10)]
+        #[clap(long, default_value_t = 10, help_heading = "Genomic Prediction Cross Validation")]
         k_folds: usize,
     },
-    /// Find the pairwise differentiation between populations using multiple/genome-wide allele frequencies
-    #[clap(name = "fst")]
+    /// Compute Fst/fixation index between populations
+    #[command(name = "fst")]
     Fst {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         window: WindowArgs,
     },
-    /// Find the heterozygosity or nucleotide diversity (π) of each population
-    #[clap(name = "heterozygosity")]
+    /// Compute heterozygosity/nucleotide diversity (π)
+    #[command(name = "heterozygosity")]
     Heterozygosity {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         window: WindowArgs,
     },
-    /// Calculate Watterson's estimator
-    #[clap(name = "watterson_estimator")]
+    /// Compute Watterson's estimator of θ
+    #[command(name = "watterson_estimator")]
     WattersonEstimator {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         window: WindowArgs,
     },
-    /// Calculate Tajima's D
-    #[clap(name = "tajima_d")]
+    /// Compute Tajima's D
+    #[command(name = "tajima_d")]
     TajimaD {
-        #[clap(flatten)]
+        #[command(flatten)]
         general_args: GeneralArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         phenotype_args: PhenotypeArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         filter_args: FilterArgs,
-        #[clap(flatten)]
+        #[command(flatten)]
         window: WindowArgs,
     }
 }
@@ -266,20 +266,23 @@ struct Cli {
 }
 
 /// # poolgen: quantitative and population genetics on pool sequencing (Pool-seq) data
-/// - *pileup2sync* - convert a pileup file into a synchronised pileup file with a header
-/// - *vcf2sync* - convert a vcf file into a synchronised pileup file with a header
-/// - *sync2csv* - convert a synchronised pileup file (sync format) into a smple comma-separated file (csv format)
-/// - *fisher_exact_test* - perform Fisher's exact test per locus (sync format), i.e. using allele counts matrix of n-pools x p-alleles (Note: phenotype data is only required for the pool sizes and/or pool names)
-/// - *chisq_test* - perform $\Chi^2$ test per locus (sync format), i.e. using allele counts matrix of n-pools x p-alleles (Note: likewise phenotype data is only required for the pool sizes and/or pool names)
-/// - *fst* - find the pairwise differentiation between populations using multiple/genome-wide allele frequencies (sync format) with unbiased Fst (fixation index) estimates from multiallelic loci (similar to [Gautier et al, 2019](https://doi.org/10.1111/1755-0998.13557))
-/// - *heterozygosity* - find the heterozygosity or nucleotide diversity ($\pi$) of each population using multiple/genome-wide allele frequencies (sync format) with unbiased Fst (fixation index) estimates from multiallelic loci (similar to [Korunes & Samuk, 2021](https://doi.org/10.1111/1755-0998.13326))
-/// - *pearson_corr* - find the correlation between phenotypes (csv format) and allele frequencies (sync format) per locus
-/// - *ols_iter* - find the strength of association between phenotypes (csv format) and allele frequencies (sync format) per locus using ordinary least squares (OLS) regression
-/// - *ols_iter_with_kinship* - similar to *ols_iter* but controls for the effects of kinship
-/// - *mle_iter* - similar to *ols_iter* but uses maximum likelihood estimation
-/// - *mle_iter_with_kinship* - similar to *ols_iter_with_kinship* but uses maximum likelihood estimation
-/// - *gwalpha* - parametric allele effect estimation using Pool-seq data in cases where the number of pools is small, e.g. 5 pools genotyped across thousands to hundred of thousands of loci. See [Fournier-Level et al, 2017](https://doi.org/10.1093/bioinformatics/btw805) for details.
-/// - *genomic_prediction_cross_validation* - perform *k*-fold cross-validation with *r* replicates using genomic prediction models (i.e. OLS and various penalised regression models)
+/// - *pileup2sync* - convert a pileup file into a synchronised pileup file (with a header row)
+/// - *vcf2sync* - convert a vcf file into a synchronised pileup file (with a header row)
+/// - *sync2csv* - convert a synchronised pileup file into a csv of allele frequencies
+/// - *fisher_exact_test* - perform Fisher's exact test per locus
+/// - *chisq_test* - perform Chi-squared test per locus
+/// - *pearson_corr* - compute Pearson's correlation between phenotypes and allele frequencies per locus
+/// - *ols_iter* - compute genome-wide association (GWAS) using ordinary least squares (OLS) regression
+/// - *ols_iter_with_kinship* - compute GWAS with OLE, but controlling for kinship
+/// - *mle_iter* - compute genome-wide association (GWAS) using maximum likelihood estimation (MLE)
+/// - *mle_iter_with_kinship* - compute GWAS with MLE, but controlling for kinship
+/// - *gwalpha* - parametric allele effect estimation using Pool-seq data
+/// - *genomic_prediction_cross_validation* - perform genomic prediction with cross-validation
+/// - *fst* - compute Fst/fixation index between populations
+/// - *heterozygosity* - compute heterozygosity/nucleotide diversity (π)
+/// - *watterson_estimator* - compute Watterson's estimator of θ
+/// - *tajima_d* - compute Tajima's D
+///
 ///  
 /// Please refer to the documentation of each module for more details.
 ///
