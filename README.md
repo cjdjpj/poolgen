@@ -21,13 +21,12 @@ Quantitative and population genetics analyses using pool sequencing data (i.e. S
     ```shell
     cd poolgen/
     cargo build --release
-    ./target/release/poolgen -h
     ```
 
-4. Detailed documentation
+4. View available utilities and options
 
     ```shell
-    cargo doc --open
+    ./target/release/poolgen -h
     ```
 
 ## File formats
@@ -47,6 +46,18 @@ Summarised or piled up base calls of aligned reads to a reference genome.
 - *Column 5*:       read codes, i.e. "." ("," for reverse strand) reference allele; "A/T/C/G" ("a/t/c/g" for reverse strand) alternative alleles; "`\[+-][0-9]+[ACGTNacgtn]`" insertions and deletions; "^[" start of read including the mapping quality score; "$" end of read; and "*" deleted or missing locus.
 - *Column 6*:       base qualities encoded as the `10 ^ -((ascii value of the character - 33) / 10)`
 - *Columns 7 - 3n*: coverages, reads, and base qualities of *n* pools (3 columns per pool).
+
+Pileup from alignments can be generated similar to below:
+```shell
+samtools mpileup \
+    -b /list/of/samtools/-/indexed/bam/or/cram/files.txt \
+    -l /list/of/SNPs/in/tab/-/delimited/format/or/bed/-/like.txt \
+    -d 100000 \
+    -q 30 \
+    -Q 30 \
+    -f /reference/genome.fna \
+    -o /output/file.pileup
+```
 
 ### Variant call format (vcf)
 
@@ -79,33 +90,15 @@ An extension of [popoolation2's](https://academic.oup.com/bioinformatics/article
 
 ### pileup2sync
 
-Convert pileup from `samtools mpileup` into a [synchronised pileup format](#Sync). Pileup from alignments can be generated similar to below:
-
-```shell
-samtools mpileup \
-    -b /list/of/samtools/-/indexed/bam/or/cram/files.txt \
-    -l /list/of/SNPs/in/tab/-/delimited/format/or/bed/-/like.txt \
-    -d 100000 \
-    -q 30 \
-    -Q 30 \
-    -f /reference/genome.fna \
-    -o /output/file.pileup
-```
+Convert pileup (`*.pileup`, `*.mpileup`) into a synchronised pileup format (`*.sync`). 
 
 ### vcf2sync
 
-Convert the most widely used genotype data format, [variant call format (`*.vcf`)](https://samtools.github.io/hts-specs/VCFv4.3.pdf) into a [synchronised pileup format](#Sync), making use of allele depths to estimate allele frequencies and omitting genotype classes information including genotype likelihoods. This utility should be compatible with vcf versions 4.2 and 4.3.
+Convert variant call format (`*.vcf`) into a synchronised pileup format (`*.sync`), using allele depths to estimate allele frequencies and omitting genotype classes information including genotype likelihoods.
 
 ### sync2csv
 
-Convert [synchronised pileup format](#Sync) into a matrix ($n$ pools x $p$ alleles across loci) and write into a comma-delimited (csv) file.
-
-<!-- ### impute (redacted for now 2023-11-10)
-
-Impute allele frequencies set to missing according to another minimum depth parameter, i.e. `--min-depth-set-to-missing`. Two imputation algorithms are currently available (a third one is in the works):
-
-1. computationally efficient mean value imputation, and
-2. adaptive linkage disequilibrium-based k-nearest neighbour imputation (an extension of [LD-kNNi](https://doi.org/10.1534/g3.115.021667)). -->
+Convert synchronised pileup format (`*.sync`) into a matrix ($n$ pools x $p$ alleles across loci) and write into a comma-delimited (csv) file.
 
 ### fisher_exact_test
 
@@ -139,26 +132,22 @@ Perform linear regression between allele frequencies and phenotypes using maximu
 
 Perform parametric genomewide association study using pool sequencing data, i.e. pool-GWAS. Refer to [Fournier-Level, et al, 2017](https://academic.oup.com/bioinformatics/article/33/8/1246/2729762) for more details.
 
-### ridge_iter
-
-Perform ridge regression between allele frequencies and phenotypes per locus, independently.
-
 ### genomic_prediction_cross_validation
 
 Perform genomic prediction cross-validation using various models including ordinary least squares (OLS), ridge regression (RR), least absolute shrinkage and selection operator (LASSO), and elastic-net ([glmnet](https://glmnet.stanford.edu/articles/glmnet.html)).
 
 ### fst
 
-Estimate pairwise genetic differentiation between pools using unbiased estimates of heterozygosity ($\pi$ or $\theta_{\pi}=4N_{e}\mu$ - similar to [Korunes & Samuk 2019](https://doi.org/10.1111/1755-0998.13326) which assumes biallelic loci). Mean genomewide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated.
+Estimate $F_{st}$/fixation index between pools using unbiased estimates of heterozygosity. Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated.
 
 ### heterozygosity
 
-Estimates per sliding window heterozygosities within populations using the unbiased method discussed [above](#fst).
+Estimates $\pi$ or heterozygosity within populations using an unbiased method ($\pi$ or $\theta_{\pi}=4N_{e}\mu$ - similar to [Korunes & Samuk 2019](https://doi.org/10.1111/1755-0998.13326). Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated. 
 
 ### watterson_estimator
 
-Estimates of Watterson's estimator of $\theta$ which is the expected heterozygosity given the number of polymorphic loci per sliding window (overlappining/non-overlapping).
+Estimates of Watterson's estimator of $\theta$. Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated. 
 
 ### tajima_d
 
-Computes [Tajima's D](https://en.wikipedia.org/wiki/Tajima%27s_D) per sliding (overlapping/non-overlapping) window.
+Computes [Tajima's D](https://en.wikipedia.org/wiki/Tajima%27s_D) per sliding (overlapping/non-overlapping) window. Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated. 
