@@ -1,6 +1,6 @@
 //! **poolgen**: quantitative and population genetics on pool sequencing (Pool-seq) data
 
-use clap::{Parser, Subcommand, Args, ValueEnum};
+use clap::{Parser, Subcommand, Args};
 use std::env;
 use ndarray::prelude::*;
 #[allow(warnings)]
@@ -103,13 +103,6 @@ struct WindowArgs {
     min_loci_per_window: u64,
 }
 
-#[derive(ValueEnum, Clone, Debug)]
-#[clap(rename_all = "UPPER")]
-enum GwalphaMethod {
-    LS,
-    ML,
-}
-
 #[derive(Subcommand)]
 enum Utility {
     /// Convert a pileup file into a synchronised pileup file with a header
@@ -204,8 +197,8 @@ enum Utility {
     #[clap(name = "gwalpha")]
     Gwalpha {
         /// GWAlpha inference method to use: "LS" for least squares or "ML" for maximum likelihood estimation
-        #[clap(long, value_enum, default_value = "ML")]
-        gwalpha_method: GwalphaMethod,
+        #[clap(long, default_value = "ML")]
+        gwalpha_method: String,
     },
     /// Perform genomic prediction with cross-validation
     #[clap(name = "genomic_prediction_cross_validation")]
@@ -554,27 +547,24 @@ fn main() {
                 test: "gwalpha".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            match gwalpha_method {
-                GwalphaMethod::LS => {
-                    output = format!("FILE CREATED: {}", file_sync_phen
-                        .read_analyse_write(
-                            &filter_stats,
-                            &general_args.output,
-                            &general_args.n_threads,
-                            gwas::gwalpha_ls,
-                        )
-                        .unwrap())
-                },
-                GwalphaMethod::ML => {
-                    output = format!("FILE CREATED: {}", file_sync_phen
-                        .read_analyse_write(
-                            &filter_stats,
-                            &general_args.output,
-                            &general_args.n_threads,
-                            gwas::gwalpha_ml,
-                        )
-                        .unwrap())
-                },
+            if gwalpha_method == "LS".to_owned() {
+                output = format!("FILE CREATED: {}", file_sync_phen
+                    .read_analyse_write(
+                        &filter_stats,
+                        &general_args.output,
+                        &general_args.n_threads,
+                        gwas::gwalpha_ls,
+                    )
+                    .unwrap())
+            } else {
+                output = format!("FILE CREATED: {}", file_sync_phen
+                    .read_analyse_write(
+                        &filter_stats,
+                        &general_args.output,
+                        &general_args.n_threads,
+                        gwas::gwalpha_ml,
+                    )
+                    .unwrap())
             }
         }
         Utility::GenomicPredictionCrossValidation { n_reps, k_folds} => {
