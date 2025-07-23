@@ -17,19 +17,25 @@ impl Parse<PileupLine> for String {
         // Position or locus coordinate in the genome assembly
         let position = match raw_locus_data[1].parse::<u64>() {
             Ok(x) => x,
-            Err(_) => return Err(Error::new(ErrorKind::Other, "Please check the format of the input pileup file as position is not a valid integer (i.e. u64).".to_owned())),
+            Err(_) => {
+                panic!("Please check format of the file: position is not an integer.");
+            }
         };
         // Allele in the reference genome assembly
         let reference_allele  = match raw_locus_data[2].to_owned().parse::<char>() {
             Ok(x) => x,
-            Err(_) => return Err(Error::new(ErrorKind::Other, "Please check the format of the input pileup file as the reference allele is not a valid nucleotide base (i.e. not a valid single character).".to_owned())),
+            Err(_) => {
+                panic!("Please check the format of the input pileup file as the reference allele is not a valid nucleotide base (i.e. not a valid single character).");
+            }
         };
         // List of the number of times the locus was read in each pool
         let mut coverages: Vec<u64> = Vec::new();
         for i in (3..raw_locus_data.len()).step_by(3) {
             let cov = match raw_locus_data[i].to_owned().parse::<u64>() {
                 Ok(x) => x,
-                Err(_) => return Err(Error::new(ErrorKind::Other, "Please check the format of the input pileup file as coverage field/s is/are not valid integer/s (i.e. u64) at pool: ".to_owned() + &(i/3).to_string() + ".")),
+                Err(_) => {
+                    panic!("Please check the format of the input pileup file as coverage field/s is/are not valid integer/s at pool: {}.", &(i/3).to_string());
+                }
             };
             coverages.push(cov);
         }
@@ -144,12 +150,12 @@ impl Parse<PileupLine> for String {
         }
         // Output PileupLine struct
         let out = Box::new(PileupLine {
-            chromosome: chromosome,
-            position: position,
-            reference_allele: reference_allele,
-            coverages: coverages,
-            read_codes: read_codes,
-            read_qualities: read_qualities,
+            chromosome,
+            position,
+            reference_allele,
+            coverages,
+            read_codes,
+            read_qualities,
         });
         // Sanity check to see if the coverage, number of alleles and quality codes match per pool
         let mut c: u64;
@@ -209,8 +215,8 @@ impl Filter for PileupLine {
         Ok(Box::new(LocusCounts {
             chromosome: self.chromosome.clone(),
             position: self.position.clone(),
-            alleles_vector: alleles_vector,
-            matrix: matrix,
+            alleles_vector,
+            matrix,
         }))
     }
 
@@ -230,7 +236,7 @@ impl Filter for PileupLine {
             chromosome: locus_counts.chromosome,
             position: locus_counts.position,
             alleles_vector: locus_counts.alleles_vector,
-            matrix: matrix,
+            matrix,
         }))
     }
 
@@ -476,7 +482,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
         // // Find the positions whereto split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
         let outname_ndigits = chunks[*n_threads].to_string().len();
-        println!("Chunks: {:?}", chunks);
+        log::info!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
         // Instantiate thread object for parallel execution
         let mut thread_objects = Vec::new();

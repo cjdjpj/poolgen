@@ -2,8 +2,10 @@
 
 #![allow(warnings)]
 use clap::{Parser, Subcommand};
+use std::io::Write;
+use env_logger::{Builder, Env};
+use log;
 use base::{GeneralArgs, PhenotypeArgs, FilterArgs, WindowArgs, prepare_phen, prepare_filterstats, parse_valid_freq};
-use std::env;
 use ndarray::prelude::*;
 use std::io;
 mod base;
@@ -93,15 +95,15 @@ enum Utility {
         /// Generate GWAS manhattan plot and QQ plot
         #[clap(long, action, help_heading = "GWAS")]
         generate_plots: bool,
-        /// Path to GFF file for extracting potential causative genes from GWAS
-        #[clap(long, help_heading = "GWAS")]
-        fname_gff: Option<String>,
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
         #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
-        /// GFF window size (look for genes within gff_window_size of a significant SNP)
+        /// Path to GFF file for extracting potential causative genes from GWAS
+        #[clap(long, help_heading = "GWAS")]
+        fname_gff: Option<String>,
+        /// GFF window size (look for genes within window_size_gff of a significant SNP)
         #[clap(long, default_value_t = 500, help_heading = "GWAS")]
-        gff_window_size: u64,
+        window_size_gff: u64,
     },
     /// Compute GWAS with OLE, but controlling for kinship
     #[command(name = "ols_iter_with_kinship")]
@@ -115,12 +117,12 @@ enum Utility {
         /// Generate GWAS manhattan plot and QQ plot
         #[clap(long, action, help_heading = "GWAS")]
         generate_plots: bool,
+        /// GFF window size (look for genes within window_size_gff of a significant SNP)
+        #[clap(long, default_value_t = 500, help_heading = "GWAS")]
+        window_size_gff: u64,
         /// GFF file for extracting potential causative genes from GWAS
         #[clap(long, help_heading = "GWAS")]
         fname_gff: Option<String>,
-        /// GFF window size (look for genes within gff_window_size of a significant SNP)
-        #[clap(long, default_value_t = 500, help_heading = "GWAS")]
-        gff_window_size: u64,
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
         #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
@@ -146,9 +148,9 @@ enum Utility {
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
         #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
-        /// GFF window size (look for genes within gff_window_size of a significant SNP)
+        /// GFF window size (look for genes within window_size_gff of a significant SNP)
         #[clap(long, default_value_t = 500, help_heading = "GWAS")]
-        gff_window_size: u64,
+        window_size_gff: u64,
     },
     /// Compute GWAS with MLE, but controlling for kinship
     #[command(name = "mle_iter_with_kinship")]
@@ -165,9 +167,9 @@ enum Utility {
         /// GFF file for extracting potential causative genes from GWAS
         #[clap(long, help_heading = "GWAS")]
         fname_gff: Option<String>,
-        /// GFF window size (look for genes within gff_window_size of a significant SNP)
+        /// GFF window size (look for genes within window_size_gff of a significant SNP)
         #[clap(long, default_value_t = 500, help_heading = "GWAS")]
-        gff_window_size: u64,
+        window_size_gff: u64,
         /// Retain only SNPs that have significant p-value (less than 0.05 bonferonni corrected)
         #[clap(long, action, help_heading = "GWAS")]
         output_sig_snps_only: bool,
@@ -303,10 +305,29 @@ struct Cli {
 
 
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
-    let cli = Cli::parse();
+    Builder::from_env(Env::default().default_filter_or("info"))
+    .format(|buf, record| {
+        let mut level_style = buf.style();
+        level_style.set_color(match record.level() {
+            log::Level::Error => env_logger::fmt::Color::Red,
+            log::Level::Warn  => env_logger::fmt::Color::Yellow,
+            log::Level::Info  => env_logger::fmt::Color::Green,
+            log::Level::Debug => env_logger::fmt::Color::Blue,
+            log::Level::Trace => env_logger::fmt::Color::Magenta,
+        });
 
-    let mut output = String::new();
+        let target = record.target().split("::").next().unwrap_or(record.target());
+
+        writeln!(
+            buf,
+            "[{} {}] {}",
+            level_style.value(record.level()),
+            target,
+            record.args()
+        )
+    })
+    .init();
+    let cli = Cli::parse();
 
     match cli.utility {
         Utility::Pileup2Sync { general_args, phenotype_args, filter_args } => {
@@ -317,14 +338,15 @@ fn main() {
                 filename: general_args.fname.clone(),
                 pool_names: phen.pool_names,
             };
-            output = format!("FILE CREATED: {}", file_pileup
+            let result = file_pileup
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     base::pileup_to_sync,
                 )
-                .unwrap());
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
         Utility::Vcf2Sync { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -333,14 +355,15 @@ fn main() {
             let file_vcf = base::FileVcf {
                 filename: general_args.fname.clone(),
             };
-            output = format!("FILE CREATED: {}", file_vcf
+            let result = file_vcf
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     base::vcf_to_sync,
                 )
-                .unwrap());
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
         Utility::Sync2Csv { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -351,14 +374,15 @@ fn main() {
                 test: "sync2csv".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = format!("FILE CREATED: {}", file_sync_phen
+            let result = file_sync_phen
                 .write_csv(
                     &filter_stats,
                     filter_args.keep_p_minus_1,
                     &general_args.output,
                     &general_args.n_threads,
                 )
-                .unwrap());
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
         Utility::FisherExactTest { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -368,13 +392,14 @@ fn main() {
                 filename: general_args.fname.clone(),
                 test: "fisher_exact_test".to_string()
             };
-            output = format!("FILE CREATED: {}", file_sync
+            let result = file_sync
                 .read_analyse_write(
                     &filter_stats, 
                     &general_args.output, 
                     &general_args.n_threads, 
                     tables::fisher)
-                .unwrap());
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
         Utility::ChisqTest { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -384,13 +409,14 @@ fn main() {
                 filename: general_args.fname.clone(),
                 test: "chisq_test".to_string()
             };
-            output = format!("FILE CREATED: {}", file_sync
+            let result = file_sync
                 .read_analyse_write(
                     &filter_stats, 
                     &general_args.output, 
                     &general_args.n_threads, 
                     tables::chisq)
-                .unwrap());
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
         Utility::PearsonCorr { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -401,16 +427,17 @@ fn main() {
                 test: "pearson_corr".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = format!("FILE CREATED: {}", file_sync_phen
+            let result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     gwas::correlation,
                 )
-                .unwrap());
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
-        Utility::OlsIter { general_args, phenotype_args, filter_args, generate_plots, fname_gff, gff_window_size, output_sig_snps_only } => {
+        Utility::OlsIter { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
             let phen = file_phen.lparse().unwrap();
             let filter_stats = prepare_filterstats(&filter_args, &phen);
@@ -419,33 +446,29 @@ fn main() {
                 test: "ols_iter".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = format!("FILE CREATED: {}", file_sync_phen
+            let result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     gwas::ols_iterate,
                 )
-                .unwrap());
-
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
+                base::run_python(&result, "plot_manhattan.py", &[]);
+                base::run_python(&result, "plot_qq.py", &[]);
             }
             if let Some(gff_filename) = fname_gff {
-                let window_size_str = gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+                let window_size_str = window_size_gff.to_string();
+                base::run_python(&result, "extract_snps_from_gff.py", &[gff_filename.clone(), window_size_str]);
             }
             if output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
+                base::run_python(&result, "remove_insig_snps.py", &[]);
             }
         }
-        Utility::OlsIterWithKinship { general_args, phenotype_args, filter_args, generate_plots, fname_gff, gff_window_size, output_sig_snps_only, xxt_eigen_variance_explained } => {
+        Utility::OlsIterWithKinship { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only, xxt_eigen_variance_explained } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
             let phen = file_phen.lparse().unwrap();
             let filter_stats = prepare_filterstats(&filter_args, &phen);
@@ -457,31 +480,28 @@ fn main() {
             let mut genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
                 .unwrap();
-            output = format!("FILE CREATED: {}", ols_with_covariate(
+            let result = ols_with_covariate(
                 &mut genotypes_and_phenotypes,
                 xxt_eigen_variance_explained,
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap());
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+            .unwrap();
+            log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
+                base::run_python(&result, "plot_manhattan.py", &[]);
+                base::run_python(&result, "plot_qq.py", &[]);
             }
             if let Some(gff_filename) = fname_gff {
-                let window_size_str = gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+                let window_size_str = window_size_gff.to_string();
+                base::run_python(&result, "extract_snps_from_gff.py", &[gff_filename.clone(), window_size_str]);
             }
             if output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
+                base::run_python(&result, "remove_insig_snps.py", &[]);
             }
         }
-        Utility::MleIter { general_args, phenotype_args, filter_args, generate_plots, fname_gff, gff_window_size, output_sig_snps_only} => {
+        Utility::MleIter { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only} => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
             let phen = file_phen.lparse().unwrap();
             let filter_stats = prepare_filterstats(&filter_args, &phen);
@@ -490,32 +510,29 @@ fn main() {
                 test: "mle_iter".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
-            output = format!("FILE CREATED: {}", file_sync_phen
+            let result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     gwas::mle_iterate,
                 )
-                .unwrap());
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+                .unwrap();
+            log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
+                base::run_python(&result, "plot_manhattan.py", &[]);
+                base::run_python(&result, "plot_qq.py", &[]);
             }
             if let Some(gff_filename) = fname_gff {
-                let window_size_str = gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+                let window_size_str = window_size_gff.to_string();
+                base::run_python(&result, "extract_snps_from_gff.py", &[gff_filename.clone(), window_size_str]);
             }
             if output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
+                base::run_python(&result, "remove_insig_snps.py", &[]);
             }
         }
-        Utility::MleIterWithKinship { general_args, phenotype_args, filter_args, generate_plots, fname_gff, gff_window_size, output_sig_snps_only, xxt_eigen_variance_explained } => {
+        Utility::MleIterWithKinship { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only, xxt_eigen_variance_explained } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
             let phen = file_phen.lparse().unwrap();
             let filter_stats = prepare_filterstats(&filter_args, &phen);
@@ -527,28 +544,25 @@ fn main() {
             let mut genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
                 .unwrap();
-            output = format!("FILE CREATED: {}", mle_with_covariate(
+            let result = mle_with_covariate(
                 &mut genotypes_and_phenotypes,
                 xxt_eigen_variance_explained,
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap());
-            let mut python_scripts: Vec<(&str, Vec<String>)> = Vec::new();
+            .unwrap();
+            log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
-                python_scripts.push(("plot_manhattan.py", vec![]));
-                python_scripts.push(("plot_qq.py", vec![]));
+                base::run_python(&result, "plot_manhattan.py", &[]);
+                base::run_python(&result, "plot_qq.py", &[]);
             }
             if let Some(gff_filename) = fname_gff {
-                let window_size_str = gff_window_size.to_string();
-                python_scripts.push(("extract_snps_from_gff.py", vec![gff_filename.clone(), window_size_str]));
+                let window_size_str = window_size_gff.to_string();
+                base::run_python(&result, "extract_snps_from_gff.py", &[gff_filename.clone(), window_size_str]);
             }
             if output_sig_snps_only {
-                python_scripts.push(("remove_insig_snps.py", vec![]));
-            }
-            if !python_scripts.is_empty() {
-                output = base::run_python_and_append(&output.clone(), &python_scripts);
+                base::run_python(&result, "remove_insig_snps.py", &[]);
             }
         }
         Utility::Gwalpha { general_args, phenotype_args, filter_args, gwalpha_method } => {
@@ -561,23 +575,25 @@ fn main() {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
             if gwalpha_method == "LS".to_owned() {
-                output = format!("FILE CREATED: {}", file_sync_phen
+                let result = file_sync_phen
                     .read_analyse_write(
                         &filter_stats,
                         &general_args.output,
                         &general_args.n_threads,
                         gwas::gwalpha_ls,
                     )
-                    .unwrap())
+                    .unwrap();
+                log::info!("FILE CREATED: {}", result);
             } else {
-                output = format!("FILE CREATED: {}", file_sync_phen
+                let result = file_sync_phen
                     .read_analyse_write(
                         &filter_stats,
                         &general_args.output,
                         &general_args.n_threads,
                         gwas::gwalpha_ml,
                     )
-                    .unwrap())
+                    .unwrap();
+                log::info!("FILE CREATED: {}", result);
             }
         }
         Utility::GenomicPredictionCrossValidation { general_args, phenotype_args, filter_args, n_reps, k_folds} => {
@@ -613,10 +629,8 @@ fn main() {
                     &general_args.output,
                 )
                 .unwrap();
-            output = tabulated;
-            let message = "Predictors for each model are here:\n-".to_owned()
-                + &predictor_files.join("\n-")[..];
-            println!("{:?}", message);
+            log::info!("Predictors for each model are here:\n-{}", &predictor_files.join("\n-")[..]);
+            log::info!("FILE CREATED: {}", &tabulated);
         }
         Utility::Fst { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -639,7 +653,7 @@ fn main() {
                 &general_args.output,
             )
             .unwrap();
-            output = format!("FILE CREATED: {}", genome_wide + " and " + &per_window[..]);
+            log::info!("FILE CREATED: {}", genome_wide + " and " + &per_window[..]);
         }
         Utility::Heterozygosity { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -653,7 +667,7 @@ fn main() {
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
                 .unwrap();
-            output = format!("FILE CREATED: {}", pi(
+            let result = pi(
                 &genotypes_and_phenotypes,
                 &window.window_size_bp,
                 &window.window_slide_size_bp,
@@ -661,7 +675,8 @@ fn main() {
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap());
+            .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
         Utility::WattersonEstimator { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -675,7 +690,7 @@ fn main() {
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
                 .unwrap();
-            output = format!("FILE CREATED: {}", watterson_estimator(
+            let result = watterson_estimator(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
                 &window.window_size_bp,
@@ -684,7 +699,8 @@ fn main() {
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap());
+            .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
         Utility::TajimaD { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -698,7 +714,7 @@ fn main() {
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
                 .unwrap();
-            output = format!("FILE CREATED: {}", tajima_d(
+            let result =  tajima_d(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
                 &window.window_size_bp,
@@ -707,10 +723,9 @@ fn main() {
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap());
+            .unwrap();
+            log::info!("FILE CREATED: {}", result);
         }
     }
-
-    println!("{}", output);
 }
 

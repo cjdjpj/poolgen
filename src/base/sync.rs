@@ -125,10 +125,7 @@ impl Parse<LocusCounts> for String {
         let position = match vec_line[1].parse::<u64>() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Please check format of the file: position is not and integer.",
-                ))
+                panic!("Please check format of the file: position is not an integer.");
             }
         };
         let alleles_vector = vec!["A", "T", "C", "G", "N", "D"]
@@ -142,6 +139,7 @@ impl Parse<LocusCounts> for String {
             counts = vec_line[i+3].split(":")
                                 .map(|x| x.to_string().parse::<u64>().expect("Please check the input sync file as the allele counts are not valid integers."))
                                 .collect::<Vec<u64>>();
+            assert_eq!(counts.len(), p, "Please check the input sync file, allele counts not in sync format (A:T:C:G:N:D)");
             for j in 0..p {
                 matrix[(i, j)] = counts[j];
             }
@@ -723,7 +721,7 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
             n_threads
         };
         let outname_ndigits = chunks[*n_threads].to_string().len();
-        println!("Chunks: {:?}", chunks);
+        log::info!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
         // Instantiate thread object for parallel execution
         let mut thread_objects = Vec::new();
@@ -907,7 +905,7 @@ impl
         // // Find the positions whereto split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
         let outname_ndigits = chunks[*n_threads].to_string().len();
-        println!("Chunks: {:?}", chunks);
+        log::info!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
         // Instantiate thread object for parallel execution
         let mut thread_objects = Vec::new();
@@ -1050,7 +1048,7 @@ impl LoadAll for FileSyncPhen {
         let fname = self.filename_sync.clone();
         // Find the positions whereto split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
-        println!("Chunks: {:?}", chunks);
+        log::info!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
         // Instantiate thread object for parallel execution
         let mut thread_objects = Vec::new();

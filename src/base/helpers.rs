@@ -4,6 +4,7 @@ use crate::base::*;
 use argmin::solver::neldermead::NelderMead;
 use ndarray::{prelude::*, Zip};
 use ndarray_linalg::svd::*;
+use log;
 
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader, SeekFrom, Error, ErrorKind};
@@ -26,38 +27,29 @@ fn find_start_of_next_line(fname: &String, pos: u64) -> u64 {
     return out;
 }
 
-/// Run python scripts and append output file names to output string
-pub fn run_python_and_append(output: &str, script_configs: &[(&str, Vec<String>)]) -> String {
-    let output_filename = output.strip_prefix("FILE CREATED: ") .unwrap_or(output);
-    let abs_output = fs::canonicalize(output_filename).expect("Failed to canonicalize output path");
+/// Runs a Python script
+pub fn run_python(result: &str, script_name: &str, extra_args: &[String]) {
+    let abs_output = fs::canonicalize(result).expect("Failed to canonicalize output path");
     let scripts_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/python");
+    let abs_script = fs::canonicalize(scripts_dir.join(script_name))
+        .expect("Failed to canonicalize script path");
 
-    let outputs: Vec<String> = std::iter::once(output.to_string())
-        .chain(script_configs.iter().map(|(script_name, extra_args)| {
-            let result: Result<String, Box<dyn std::error::Error>> = (|| {
-                let abs_script = fs::canonicalize(scripts_dir.join(script_name))?;
-                let mut cmd = Command::new("python3");
-                cmd.arg(&abs_script)
-                   .arg(&abs_output);
-                
-                // Add extra positional arguments
-                for arg in extra_args {
-                    cmd.arg(arg);
-                }
-                
-                let o = cmd.output()?;
-                if !o.status.success() {
-                    return Err(format!("WARNING: {} failed: {}", script_name, String::from_utf8_lossy(&o.stderr)).into());
-                }
+    let mut cmd = Command::new("python3");
+    cmd.arg(&abs_script).arg(&abs_output);
 
-                Ok(String::from_utf8_lossy(&o.stdout).to_string())
-            })();
+    for arg in extra_args {
+        cmd.arg(arg);
+    }
 
-            result.unwrap_or_else(|e| e.to_string())
-        }))
-        .collect();
+    let output = cmd.output().expect("Failed to execute Python script");
 
-    outputs.join("\n")
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::error!("WARNING: {} failed:\n{}", script_name, stderr);
+    } else {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        log::info!("{}", stdout);
+    }
 }
 
 pub fn prepare_phen(

@@ -58,11 +58,11 @@ impl Parse<VcfLine> for String {
         }
         // Output VcfLine struct
         let out = Box::new(VcfLine {
-            chromosome: chromosome,
-            position: position,
-            reference_allele: reference_allele,
-            alternative_alleles: alternative_alleles,
-            allele_depths: allele_depths,
+            chromosome,
+            position,
+            reference_allele,
+            alternative_alleles,
+            allele_depths,
         });
         return Ok(out);
     }
@@ -86,8 +86,8 @@ impl Filter for VcfLine {
         Ok(Box::new(LocusCounts {
             chromosome: self.chromosome.clone(),
             position: self.position.clone(),
-            alleles_vector: alleles_vector,
-            matrix: matrix,
+            alleles_vector,
+            matrix,
         }))
     }
 
@@ -107,7 +107,7 @@ impl Filter for VcfLine {
             chromosome: locus_counts.chromosome,
             position: locus_counts.position,
             alleles_vector: locus_counts.alleles_vector,
-            matrix: matrix,
+            matrix,
         }))
     }
 
@@ -360,7 +360,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         // Find the positions where to split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
         let outname_ndigits = chunks[*n_threads].to_string().len();
-        println!("Chunks: {:?}", chunks);
+        log::info!("Chunks: {:?}", chunks);
         // Tuple arguments of vcf2sync_chunks
         // Instantiate thread object for parallel execution
         let mut thread_objects = Vec::new();
