@@ -409,7 +409,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         for f in thread_ouputs.lock().unwrap().iter() {
             fnames_out.push(f.to_owned());
         }
-        println!("fnames_out={:?}", fnames_out);
+        log::info!("TEMP FILES: {:?}", fnames_out);
         fnames_out.sort();
         // Iterate across output files from each thread, and concatenate non-empty files
         for f in fnames_out {
