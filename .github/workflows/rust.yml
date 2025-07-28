@@ -26,6 +26,9 @@ jobs:
                 cargo run -- pileup2sync -f ./tests/test.pileup -p ./tests/test.csv --n-threads 2 --max-base-error-rate 0.0001
                 cargo run -- pileup2sync -f ./tests/test.pileup -p ./tests/test.csv --n-threads 2 --max-base-error-rate 0.0001 --min-coverage-depth 10
                 cargo run -- pileup2sync -f ./tests/test.pileup -p ./tests/test.csv --n-threads 2 --max-base-error-rate 0.0001 --min-coverage-depth 10 --min-allele-frequency 0.01
+                cargo run -- vcf2sync -f ./tests/test.vcf -p ./tests/test.csv --n-threads 2 --max-base-error-rate 0.0001
+                cargo run -- vcf2sync -f ./tests/test.vcf -p ./tests/test.csv --n-threads 2 --max-base-error-rate 0.0001 --min-coverage-depth 10
+                cargo run -- vcf2sync -f ./tests/test.vcf -p ./tests/test.csv --n-threads 2 --max-base-error-rate 0.0001 --min-coverage-depth 10 --min-allele-frequency 0.01
                 cargo run -- fisher_exact_test -f ./tests/test.sync -p ./tests/test.csv --n-threads 2
                 cargo run -- fisher_exact_test -f ./tests/test.sync -p ./tests/test.csv --n-threads 2 --min-coverage-depth 10 --min-allele-frequency 0.01
                 cargo run -- chisq_test -f ./tests/test.sync -p ./tests/test.csv --n-threads 2
@@ -43,4 +46,4 @@ jobs:
                 cargo run -- fst            -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3 --window-size-bp 100 --window-slide-size-bp 50 --min-loci-per-window 10 --n-threads 2
                 cargo run -- heterozygosity -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3 --window-size-bp 100 --window-slide-size-bp 50 --min-loci-per-window 10 --n-threads 2
                 cargo run -- tajima_d       -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3 --window-size-bp 100 --window-slide-size-bp 50 --min-loci-per-window 10 --n-threads 2
-                # cargo run -- genomic_prediction_cross_validation -f ./tests/test_MORE_POOLS.sync -p ./tests/test_MORE_POOLS.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 2
+                cargo run -- watterson_estimator       -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3 --window-size-bp 100 --window-slide-size-bp 50 --min-loci-per-window 10 --n-threads 2

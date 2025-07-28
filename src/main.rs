@@ -24,7 +24,8 @@ use popgen::*;
 #[derive(Subcommand)]
 enum Utility {
     /// Convert a pileup file into a synchronised pileup file (with a header row)
-    #[command(name = "pileup2sync")]
+    #[command(name = "pileup2sync", 
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen pileup2sync -f ./tests/test.pileup -p ./tests/test.csv")]
     Pileup2Sync { 
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -34,7 +35,8 @@ enum Utility {
         filter_args: FilterArgs,
     },
     /// Convert a vcf file into a synchronised pileup file (with a header row)
-    #[command(name = "vcf2sync")]
+    #[command(name = "vcf2sync", 
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen vcf2sync -f ./tests/test.vcf -p ./tests/test.csv")]
     Vcf2Sync { 
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -44,7 +46,8 @@ enum Utility {
         filter_args: FilterArgs,
     },
     /// Convert a synchronised pileup file (sync format) into a csv of allele frequencies
-    #[command(name = "sync2csv")]
+    #[command(name = "sync2csv",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen sync2csv -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --keep-p-minus-1")]
     Sync2Csv { 
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -54,7 +57,9 @@ enum Utility {
         filter_args: FilterArgs,
     },
     /// Perform Fisher's exact test per locus
-    #[command(name = "fisher_exact_test")]
+    #[command(name = "fisher_exact_test",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen fisher_exact_test -f ./tests/test.sync -p ./tests/test.csv --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01"
+    )]
     FisherExactTest { 
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -64,7 +69,8 @@ enum Utility {
         filter_args: FilterArgs,
     },
     /// Perform Chi-squared test per locus
-    #[command(name = "chisq_test")]
+    #[command(name = "chisq_test",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen chisq_test -f ./tests/test.sync -p ./tests/test.csv --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01")]
     ChisqTest { 
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -74,7 +80,9 @@ enum Utility {
         filter_args: FilterArgs,
     },
     /// Compute Pearson's correlation between phenotypes and allele frequencies per locus
-    #[command(name = "pearson_corr")]
+    #[command(name = "pearson_corr",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen pearson_corr -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01"
+    )]
     PearsonCorr { 
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -84,7 +92,8 @@ enum Utility {
         filter_args: FilterArgs,
     },
     /// Compute genome-wide association (GWAS) per locus using ordinary least squares (OLS) regression
-    #[command(name = "ols_iter")]
+    #[command(name = "ols_iter",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen ols_iter -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01")]
     OlsIter {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -106,7 +115,8 @@ enum Utility {
         window_size_gff: u64,
     },
     /// Compute GWAS with OLE, but controlling for kinship
-    #[command(name = "ols_iter_with_kinship")]
+    #[command(name = "ols_iter_with_kinship",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen ols_iter_with_kinship -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01")]
     OlsIterWithKinship {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -131,7 +141,8 @@ enum Utility {
         xxt_eigen_variance_explained: f64,
     },
     /// Compute genome-wide association (GWAS) per locus using maximum likelihood estimation (MLE)
-    #[command(name = "mle_iter")]
+    #[command(name = "mle_iter",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen mle_iter -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01")]
     MleIter {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -153,7 +164,8 @@ enum Utility {
         window_size_gff: u64,
     },
     /// Compute GWAS with MLE, but controlling for kinship
-    #[command(name = "mle_iter_with_kinship")]
+    #[command(name = "mle_iter_with_kinship",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen mle_iter -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01")]
     MleIterWithKinship {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -178,7 +190,8 @@ enum Utility {
         xxt_eigen_variance_explained: f64,
     },
     /// Parametric allele effect estimation using Pool-seq data
-    #[command(name = "gwalpha")]
+    #[command(name = "gwalpha",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen gwalpha  -f ./tests/test.sync -p ./tests/test.py --n-threads 32 --gwalpha-method ML")]
     Gwalpha {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -207,7 +220,8 @@ enum Utility {
         k_folds: usize,
     },
     /// Compute Fst/fixation index between populations
-    #[command(name = "fst")]
+    #[command(name = "fst",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen fst -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32")]
     Fst {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -219,7 +233,8 @@ enum Utility {
         window: WindowArgs,
     },
     /// Compute heterozygosity/nucleotide diversity (π)
-    #[command(name = "heterozygosity")]
+    #[command(name = "heterozygosity",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen heterozygosity -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32")]
     Heterozygosity {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -231,7 +246,8 @@ enum Utility {
         window: WindowArgs,
     },
     /// Compute Watterson's estimator of θ
-    #[command(name = "watterson_estimator")]
+    #[command(name = "watterson_estimator",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen watterson_estimator -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32")]
     WattersonEstimator {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -243,7 +259,8 @@ enum Utility {
         window: WindowArgs,
     },
     /// Compute Tajima's D
-    #[command(name = "tajima_d")]
+    #[command(name = "tajima_d",
+        after_help = "\x1b[1m\x1b[4mExample:\x1b[0m ./target/release/poolgen tajima_d -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32")]
     TajimaD {
         #[command(flatten)]
         general_args: GeneralArgs,
@@ -266,43 +283,6 @@ struct Cli {
     #[clap(subcommand)]
     utility: Utility,
 }
-
-/// # poolgen: quantitative and population genetics on pool sequencing (Pool-seq) data
-/// - *pileup2sync* - convert a pileup file into a synchronised pileup file (with a header row)
-/// - *vcf2sync* - convert a vcf file into a synchronised pileup file (with a header row)
-/// - *sync2csv* - convert a synchronised pileup file into a csv of allele frequencies
-/// - *fisher_exact_test* - perform Fisher's exact test per locus
-/// - *chisq_test* - perform Chi-squared test per locus
-/// - *pearson_corr* - compute Pearson's correlation between phenotypes and allele frequencies per locus
-/// - *ols_iter* - compute genome-wide association (GWAS) using ordinary least squares (OLS) regression
-/// - *ols_iter_with_kinship* - compute GWAS with OLE, but controlling for kinship
-/// - *mle_iter* - compute genome-wide association (GWAS) using maximum likelihood estimation (MLE)
-/// - *mle_iter_with_kinship* - compute GWAS with MLE, but controlling for kinship
-/// - *gwalpha* - parametric allele effect estimation using Pool-seq data
-/// - *genomic_prediction_cross_validation* - perform genomic prediction with cross-validation
-/// - *fst* - compute Fst/fixation index between populations
-/// - *heterozygosity* - compute heterozygosity/nucleotide diversity (π)
-/// - *watterson_estimator* - compute Watterson's estimator of θ
-/// - *tajima_d* - compute Tajima's D
-///
-///  
-/// Please refer to the documentation of each module for more details.
-///
-/// ## Examples
-/// ```shell
-/// cargo run -- pileup2sync -f ./tests/test.pileup -p ./tests/test.csv
-/// cargo run -- fisher_exact_test -f ./tests/test.sync -p ./tests/test.csv --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01
-/// cargo run -- chisq_test -f ./tests/test.sync -p ./tests/test.csv --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01
-/// cargo run -- pearson_corr -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01
-/// cargo run -- fst -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32
-/// cargo run -- heterozygosity -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32
-/// cargo run -- ols_iter -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01
-/// cargo run -- mle_iter -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --min-coverage-depth 10 --min-allele-frequency 0.01
-/// cargo run -- gwalpha  -f ./tests/test.sync -p ./tests/test.py --n-threads 32 --gwalpha-method ML
-/// cargo run -- sync2csv -f ./tests/test.sync -p ./tests/test.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32 --keep-p-minus-1
-/// # cargo run -- genomic_prediction_cross_validation -f ./tests/test_MORE_POOLS.sync -p ./tests/test_MORE_POOLS.csv --phen-delim , --phen-name-col 0 --phen-value-col 2,3  --n-threads 32
-/// ```
-
 
 fn main() {
     Builder::from_env(Env::default().default_filter_or("info"))
