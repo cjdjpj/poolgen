@@ -311,7 +311,12 @@ pub fn mle_with_covariate(
     fname_output: &String,
 ) -> Result<String, GenericError> {
     // Check that a output file can be created, but don't create it.
-    let _ = std::fs::OpenOptions::new().write(true).create_new(true).open(&fname_output).map(|_| std::fs::remove_file(&fname_output)).expect("Cannot write to output file");
+    let _ = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&fname_output)
+        .and_then(|_| std::fs::remove_file(&fname_output))
+        .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
     // Check struct
     genotypes_and_phenotypes.check().unwrap();
     // Generate the covariate

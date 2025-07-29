@@ -323,7 +323,6 @@ fn tool() -> Result<(), GenericError> {
                     &general_args.n_threads,
                     base::pileup_to_sync,
                 )?;
-            log::info!("FILE CREATED: {}", result);
         }
         Utility::Vcf2Sync { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -339,7 +338,6 @@ fn tool() -> Result<(), GenericError> {
                     &general_args.n_threads,
                     base::vcf_to_sync,
                 )?;
-            log::info!("FILE CREATED: {}", result);
         }
         Utility::Sync2Csv { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -356,9 +354,7 @@ fn tool() -> Result<(), GenericError> {
                     filter_args.keep_p_minus_1,
                     &general_args.output,
                     &general_args.n_threads,
-                )
-                ?;
-            log::info!("FILE CREATED: {}", result);
+                )?;
         }
         Utility::FisherExactTest { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -374,7 +370,6 @@ fn tool() -> Result<(), GenericError> {
                     &general_args.output, 
                     &general_args.n_threads, 
                     tables::fisher)?;
-            log::info!("FILE CREATED: {}", result);
         }
         Utility::ChisqTest { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -390,7 +385,6 @@ fn tool() -> Result<(), GenericError> {
                     &general_args.output, 
                     &general_args.n_threads, 
                     tables::chisq)?;
-            log::info!("FILE CREATED: {}", result);
         }
         Utility::PearsonCorr { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -408,7 +402,6 @@ fn tool() -> Result<(), GenericError> {
                     &general_args.n_threads,
                     gwas::correlation,
                 )?;
-            log::info!("FILE CREATED: {}", result);
         }
         Utility::OlsIter { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -426,8 +419,6 @@ fn tool() -> Result<(), GenericError> {
                     &general_args.n_threads,
                     gwas::ols_iterate,
                 )?;
-            log::info!("FILE CREATED: {}", result);
-
             if generate_plots {
                 base::run_python(&result, "plot_manhattan.py", &[]);
                 base::run_python(&result, "plot_qq.py", &[]);
@@ -458,8 +449,6 @@ fn tool() -> Result<(), GenericError> {
                 &general_args.fname,
                 &general_args.output,
             )?;
-            log::info!("FILE CREATED: {}", result);
-
             if generate_plots {
                 base::run_python(&result, "plot_manhattan.py", &[]);
                 base::run_python(&result, "plot_qq.py", &[]);
@@ -487,8 +476,7 @@ fn tool() -> Result<(), GenericError> {
                     &general_args.output,
                     &general_args.n_threads,
                     gwas::mle_iterate,
-                )
-                ?;
+                )?;
             log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
@@ -520,9 +508,7 @@ fn tool() -> Result<(), GenericError> {
                 xxt_eigen_variance_explained,
                 &general_args.fname,
                 &general_args.output,
-            )
-            ?;
-            log::info!("FILE CREATED: {}", result);
+            )?;
 
             if generate_plots {
                 base::run_python(&result, "plot_manhattan.py", &[]);
@@ -554,7 +540,6 @@ fn tool() -> Result<(), GenericError> {
                         gwas::gwalpha_ls,
                     )
                     ?;
-                log::info!("FILE CREATED: {}", result);
             } else {
                 let result = file_sync_phen
                     .read_analyse_write(
@@ -564,7 +549,6 @@ fn tool() -> Result<(), GenericError> {
                         gwas::gwalpha_ml,
                     )
                     ?;
-                log::info!("FILE CREATED: {}", result);
             }
         }
         Utility::GenomicPredictionCrossValidation { general_args, phenotype_args, filter_args, n_reps, k_folds} => {
@@ -598,10 +582,8 @@ fn tool() -> Result<(), GenericError> {
                     functions,
                     &general_args.fname,
                     &general_args.output,
-                )
-                ?;
+                )?;
             log::info!("Predictors for each model are here:\n-{}", &predictor_files.join("\n-")[..]);
-            log::info!("FILE CREATED: {}", &tabulated);
         }
         Utility::Fst { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -622,9 +604,7 @@ fn tool() -> Result<(), GenericError> {
                 &window.min_loci_per_window,
                 &general_args.fname,
                 &general_args.output,
-            )
-            ?;
-            log::info!("FILE CREATED: {}", genome_wide + " and " + &per_window[..]);
+            )?;
         }
         Utility::Heterozygosity { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -647,7 +627,6 @@ fn tool() -> Result<(), GenericError> {
                 &general_args.output,
             )
             ?;
-            log::info!("FILE CREATED: {}", result);
         }
         Utility::WattersonEstimator { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -669,9 +648,7 @@ fn tool() -> Result<(), GenericError> {
                 &window.min_loci_per_window,
                 &general_args.fname,
                 &general_args.output,
-            )
-            ?;
-            log::info!("FILE CREATED: {}", result);
+            )?;
         }
         Utility::TajimaD { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -685,7 +662,7 @@ fn tool() -> Result<(), GenericError> {
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
                 ?;
-            let result =  tajima_d(
+            let result = tajima_d(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
                 &window.window_size_bp,
@@ -693,9 +670,7 @@ fn tool() -> Result<(), GenericError> {
                 &window.min_loci_per_window,
                 &general_args.fname,
                 &general_args.output,
-            )
-            ?;
-            log::info!("FILE CREATED: {}", result);
+            )?;
         }
     }
     Ok(())

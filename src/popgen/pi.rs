@@ -147,13 +147,13 @@ pub fn pi(
     // Define the loci for writing the output
     let (_loci_idx, loci_chr, loci_pos) = genotypes_and_phenotypes.count_loci().unwrap();
     // Instantiate output file
-    let error_writing_file = "Unable to create file: ".to_owned() + &fname_output;
     let mut file_out = OpenOptions::new()
         .create_new(true)
         .write(true)
         .append(false)
         .open(&fname_output)
-        .expect(&error_writing_file);
+        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
+    log::info!("File created: {}", &fname_output);
     // Header
     let mut line: Vec<String> = vec!["Pool".to_owned(), "Mean_across_windows".to_owned()];
     for i in 0..n_windows {

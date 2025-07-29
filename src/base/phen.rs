@@ -57,26 +57,40 @@ impl Parse<Phen> for FilePhen {
                     .map(|x| x.to_owned())
                     .collect::<Vec<String>>();
                 pool_names.push(vec_line[names_column_id].clone());
-                pool_sizes.push(vec_line[sizes_column_id].parse::<f64>().expect(
-                    &("T_T Pool sizes column (column index: ".to_owned()
-                        + &sizes_column_id.to_string()
-                        + ") is not a valid number. Line: "
-                        + &line
-                        + "."),
-                ));
+                pool_sizes.push(
+                    vec_line[sizes_column_id]
+                        .parse::<f64>()
+                        .map_err(|e| {
+                            GenericError::Fatal(format!(
+                                "Pool sizes column (column index: {}) is not a valid number. Line: {}. Parse error: {}",
+                                sizes_column_id, line, e
+                            ))
+                        })?
+                );
                 for j in 0..k {
                     if (vec_line[trait_values_column_ids[j]] == "".to_string())
                         | (vec_line[trait_values_column_ids[j]] == "NA".to_string())
                         | (vec_line[trait_values_column_ids[j]] == "NAN".to_string())
                         | (vec_line[trait_values_column_ids[j]] == "NaN".to_string())
                         | (vec_line[trait_values_column_ids[j]] == "na".to_string())
-                        | (vec_line[trait_values_column_ids[j]] == "nan".to_string())
+                    | (vec_line[trait_values_column_ids[j]] == "nan".to_string())
                     {
                         phen_vec.push(f64::NAN)
                     } else {
-                        phen_vec.push(vec_line[trait_values_column_ids[j]].parse::<f64>()
-                                                            .expect("T_T Error parsing the phenotype file. The trait values specified cannot be casted into float64."))
-                    };
+                        phen_vec.push(
+                            vec_line[trait_values_column_ids[j]]
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    GenericError::Fatal(format!(
+                                        "T_T Error parsing the phenotype file. The trait value \"{}\" (column index: {}) could not be parsed as f64. Line: {}. Parse error: {}",
+                                        vec_line[trait_values_column_ids[j]],
+                                        trait_values_column_ids[j],
+                                        line,
+                                        e
+                                    ))
+                                })?
+                        );
+                    }
                 }
             }
             // Normalize pool sizes
@@ -174,7 +188,7 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             // Default format //
             ////////////////////
-            let phen = self.1.lparse().unwrap();
+            let phen = self.1.lparse()?;
             return Ok(Box::new(FileSyncPhen {
                 filename_sync,
                 pool_names: phen.pool_names,
@@ -186,7 +200,7 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             // GWAlpha format //
             ////////////////////
-            let phen = self.1.lparse().unwrap();
+            let phen = self.1.lparse()?;
             return Ok(Box::new(FileSyncPhen {
                 filename_sync,
                 pool_names: phen.pool_names,

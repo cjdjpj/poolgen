@@ -131,13 +131,14 @@ pub fn fst(
             + ".csv";
     }
     // Instantiate output file
-    let error_writing_file = "Unable to create file: ".to_owned() + &fname_output;
     let mut file_out = OpenOptions::new()
         .create_new(true)
         .write(true)
         .append(false)
         .open(&fname_output)
-        .expect(&error_writing_file);
+        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
+    log::info!("File created: {}", &fname_output);
+    log::info!("File created: {}", &fname_output_per_window);
     // Header
     let mut line: Vec<String> = vec!["".to_owned()];
     for pool in &genotypes_and_phenotypes.pool_names {
@@ -204,13 +205,13 @@ pub fn fst(
     // );
     // Write output (Fst averaged per window)
     // Instantiate output file
-    let error_writing_file = "Unable to create file: ".to_owned() + &fname_output_per_window;
     let mut file_out = OpenOptions::new()
         .create_new(true)
         .write(true)
         .append(false)
-        .open(&fname_output_per_window)
-        .expect(&error_writing_file);
+        .open(&fname_output)
+        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
+    log::info!("File created: {}", &fname_output);
     // Header
     let mut line: Vec<String> = vec!["chr".to_owned(), "pos_ini".to_owned(), "pos_fin".to_owned()];
     for j in 0..n {

@@ -490,13 +490,18 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
             out = bname.to_owned() + "-" + &time.to_string() + ".sync";
         }
         // Check that a output file can be created, but don't create it.
-        let _ = std::fs::OpenOptions::new().write(true).create_new(true).open(&out).map(|_| std::fs::remove_file(&out)).expect("Cannot write to output file");
+        let _ = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&out)
+            .and_then(|_| std::fs::remove_file(&out))
+            .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
         // Pool names
         let names = self.pool_names.join("\t");
         // // Find the positions whereto split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
         let outname_ndigits = chunks[*n_threads].to_string().len();
-        log::info!("Chunks: {:?}", chunks);
+        log::info!("Multithreading chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
         // Instantiate thread object for parallel execution
         let mut thread_objects = Vec::new();
@@ -535,14 +540,12 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
             }
         }
         // Instatiate output file
-        let error_writing_file = "Unable to create file: ".to_owned() + &out;
-        // let mut file_out = File::create(&out).expect(&error_writing_file);
         let mut file_out = OpenOptions::new()
             .create_new(true)
             .write(true)
             .append(false)
             .open(&out)
-            .expect(&error_writing_file);
+            .map_err(|e| GenericError::Fatal(format!("Unable to create file: {}", &out)))?;
         // Write out
         file_out
             .write_all(("#chr\tpos\tref\t".to_owned() + &names + "\n").as_bytes())
@@ -552,7 +555,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
         for f in thread_ouputs.lock().unwrap().iter() {
             fnames_out.push(f.to_owned());
         }
-        log::info!("TEMP FILES CREATED: {:?}", fnames_out);
+        log::info!("Temp files created: {:?}", fnames_out);
         fnames_out.sort();
         // Iterate across output files from each thread, and concatenate non-empty files
         for f in fnames_out {
@@ -564,7 +567,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
             let error_deleting_file = "Unable to remove file: ".to_owned() + &f;
             std::fs::remove_file(f).expect(&error_deleting_file);
         }
-        log::info!("TEMP FILES REMOVED");
+        log::info!("Temp files removed");
         Ok(out)
     }
 }
