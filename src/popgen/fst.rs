@@ -13,7 +13,7 @@ pub fn fst(
     min_loci_per_window: &u64,
     fname_input: &String,
     fname_output: &String,
-) -> io::Result<(String, String)> {
+) -> Result<(String, String), GenericError> {
     let (n, _) = genotypes_and_phenotypes
         .intercept_and_allele_frequencies
         .dim();
@@ -172,10 +172,10 @@ pub fn fst(
         min_loci_per_window,
     )
     .unwrap();
-    // println!("fst={:?}", fst);
-    // println!("l={:?}", l);
-     println!("windows_idx_head={:?}", windows_idx_head);
-     println!("windows_idx_tail={:?}", windows_idx_tail);
+    // log::info!("fst={:?}", fst);
+    // log::info!("l={:?}", l);
+    // log::info!("windows_idx_head={:?}", windows_idx_head);
+    // log::info!("windows_idx_tail={:?}", windows_idx_tail);
     // Take the means per window
     let n_windows = windows_idx_head.len();
     assert!(n_windows > 0, "There were no windows defined. Please check the sync file, the window size, slide size, and the minimum number of loci per window.");
@@ -187,9 +187,9 @@ pub fn fst(
         for j in 0..n {
             for k in 0..n {
                 let idx = (j * n) + k;
-                // println!("#############################");
-                // println!("start={}; end={}; j={}; k={}", idx_start, idx_end, j, j);
-                // println!("fst.slice(s![idx_start..idx_end, j, k])={:?}", fst.slice(s![idx_start..idx_end, j, k]));
+                // log::info!("#############################");
+                // log::info!("start={}; end={}; j={}; k={}", idx_start, idx_end, j, j);
+                // log::info!("fst.slice(s![idx_start..idx_end, j, k])={:?}", fst.slice(s![idx_start..idx_end, j, k]));
                 fst_per_pool_x_pool_per_window[(i, idx)] =
                     match fst.slice(s![idx_start..idx_end, j, k]).mean_axis(Axis(0)) {
                         Some(x) => x.fold(0.0, |_, &x| x),
@@ -198,7 +198,7 @@ pub fn fst(
             }
         }
     }
-    // println!(
+    // log::info!(
     //     "fst_per_pool_x_pool_per_window={:?}",
     //     fst_per_pool_x_pool_per_window
     // );
@@ -341,10 +341,10 @@ mod tests {
         let pop5_4 = fst[(4, 3)]; // totally different populations, i.e. fst=1.0
         let pop1_3 = fst[(0, 2)]; // fst ~ 0.5
         let pop3_1 = fst[(2, 1)]; // fst ~ 0.5
-        println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
-        println!("pop={:?}", pop);
-        println!("fst={:?}", fst);
-        println!("out_per_window={:?}", out_per_window);
+        log::info!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
+        log::info!("pop={:?}", pop);
+        log::info!("fst={:?}", fst);
+        log::info!("out_per_window={:?}", out_per_window);
         // Assertions
         assert_eq!(diag, Array1::from_elem(pop.len(), 0.0));
         assert_eq!(pop1_2, 1.0);

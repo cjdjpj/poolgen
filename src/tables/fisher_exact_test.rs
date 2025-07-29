@@ -3,11 +3,10 @@ use std::io::{self, Error, ErrorKind};
 
 use crate::base::*;
 
-fn factorial_log10(x: f64) -> io::Result<f64> {
+fn factorial_log10(x: f64) -> Result<f64, GenericError> {
     if x > 34.0 {
-        return Err(Error::new(
-            ErrorKind::Other,
-            "\u{1F494} Input is far too big \u{1F6AB}",
+        return Err(GenericError::Fatal(
+            "\u{1F494} Input is far too big \u{1F6AB}".to_string()
         ));
     }
     let mut out: f64 = 0.0;

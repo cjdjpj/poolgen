@@ -15,7 +15,7 @@ pub fn tajima_d(
     min_loci_per_window: &u64,
     fname_input: &String,
     fname_output: &String,
-) -> io::Result<String> {
+) -> Result<String, GenericError> {
     // Calculate Watterson's estimator
     let (watterson_theta_per_pool_per_window, windows_idx_head, windows_idx_tail) =
         theta_watterson(
@@ -26,7 +26,7 @@ pub fn tajima_d(
             min_loci_per_window,
         )
         .unwrap();
-    // println!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
+    // log::info!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
     let n_pools = watterson_theta_per_pool_per_window.ncols();
     let n_windows = watterson_theta_per_pool_per_window.nrows();
     // Calculate heterozygosities
@@ -37,9 +37,9 @@ pub fn tajima_d(
         min_loci_per_window,
     )
     .unwrap();
-    // println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
-    // println!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
-    // println!("pi_per_pool_per_window={:?}", pi_per_pool_per_window);
+    // log::info!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
+    // log::info!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
+    // log::info!("pi_per_pool_per_window={:?}", pi_per_pool_per_window);
     // Sanity checks
     assert_eq!(n_pools, pi_per_pool_per_window.ncols(), "The number of pools extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.");
     assert_eq!(n_windows, pi_per_pool_per_window.nrows(), "The number of windows extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.");
@@ -80,17 +80,17 @@ pub fn tajima_d(
                     / vd.sqrt()
             };
             // if tajimas_d_per_pool_per_window[(i, j)].is_infinite() {
-            //     println!("pi_per_pool_per_window[(i, j)]={:?}", pi_per_pool_per_window[(i, j)]);
-            //     println!("watterson_theta_per_pool_per_window[(i, j)]={:?}", watterson_theta_per_pool_per_window[(i, j)]);
-            //     println!("vd={:?}", vd);
-            //     println!("a1={:?}", a1);
-            //     println!("a2={:?}", a2);
-            //     println!("b1={:?}", b1);
-            //     println!("b2={:?}", b2);
-            //     println!("c1={:?}", c1);
-            //     println!("c2={:?}", c2);
-            //     println!("e1={:?}", e1);
-            //     println!("e2={:?}", e2);
+            //     log::info!("pi_per_pool_per_window[(i, j)]={:?}", pi_per_pool_per_window[(i, j)]);
+            //     log::info!("watterson_theta_per_pool_per_window[(i, j)]={:?}", watterson_theta_per_pool_per_window[(i, j)]);
+            //     log::info!("vd={:?}", vd);
+            //     log::info!("a1={:?}", a1);
+            //     log::info!("a2={:?}", a2);
+            //     log::info!("b1={:?}", b1);
+            //     log::info!("b2={:?}", b2);
+            //     log::info!("c1={:?}", c1);
+            //     log::info!("c2={:?}", c2);
+            //     log::info!("e1={:?}", e1);
+            //     log::info!("e2={:?}", e2);
             // }
         }
     }
@@ -261,7 +261,7 @@ mod tests {
             }
         }
         let d: Array2<f64> = Array2::from_shape_vec((5, 3), d).unwrap();
-        println!("d={:?}", d);
+        log::info!("d={:?}", d);
         let pop2_locus1 = d[(1, 1)]; // locus fixed - neutral, i.e. d=0.0
         let pop2_locus2 = d[(1, 2)]; // locus fixed - neutral, i.e. d=0.0
         let pop4_locus1 = d[(3, 1)]; // excess rare alleles - selective sweep, i.e. d<0.0

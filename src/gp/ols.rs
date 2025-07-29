@@ -32,11 +32,11 @@ pub fn ols(
     // let mut b_hat: Array2<f64> = Array2::from_elem((p, k), f64::NAN);
     // for j in 0..k {
     //     let yj: Array1<f64> = y.column(j).to_owned();
-    //     println!("x={:?}", x);
-    //     println!("yj={:?}", yj);
+    //     log::info!("x={:?}", x);
+    //     log::info!("yj={:?}", yj);
     //     let ls = x.least_squares(&yj).unwrap();
     //     let bj = ls.solution;
-    //     println!("bj={:?}", bj);
+    //     log::info!("bj={:?}", bj);
     //     for i in 0..p {
     //         b_hat[(i, j)] = bj[j];
     //     }
@@ -230,24 +230,24 @@ mod tests {
         let y: Array2<f64> =
             Array2::from_shape_vec((5, 1), (1..6).map(|x| x as f64 / 5.0).collect::<Vec<f64>>())
                 .unwrap();
-        println!("x_wide={:?}", x_wide);
-        println!("x_tall={:?}", x_tall);
-        println!("y={:?}", y);
+        log::info!("x_wide={:?}", x_wide);
+        log::info!("x_tall={:?}", x_tall);
+        log::info!("y={:?}", y);
         let (b_wide, _) = ols(&x_wide, &y, &vec![0, 1, 2, 3, 4]).unwrap();
-        println!("b_wide={:?}", b_wide);
+        log::info!("b_wide={:?}", b_wide);
         let (b_tall, _) = ols(&x_tall, &y, &vec![0, 1, 2, 3, 4]).unwrap();
-        println!("b_tall={:?}", b_tall);
+        log::info!("b_tall={:?}", b_tall);
         let y_hat_wide = &x_wide.dot(&b_wide).mapv(|x| sensible_round(x, 4));
-        println!("y_hat_wide={:?}", y_hat_wide);
+        log::info!("y_hat_wide={:?}", y_hat_wide);
         let y_hat_tall = &x_tall.dot(&b_tall).mapv(|x| sensible_round(x, 4));
-        println!("y_hat_tall={:?}", y_hat_tall);
+        log::info!("y_hat_tall={:?}", y_hat_tall);
 
         assert_eq!(y, y_hat_wide);
         assert_eq!(y_hat_wide, y_hat_tall);
 
         let (b_wide_iterative, _) =
             ols_iterative_with_kinship_pca_covariate(&x_wide, &y, &vec![0, 1, 2, 3, 4]).unwrap();
-        println!("b_wide_iterative={:?}", b_wide_iterative);
+        log::info!("b_wide_iterative={:?}", b_wide_iterative);
         //        assert_eq!(
         //            b_wide_iterative,
         //            Array2::from_shape_vec(

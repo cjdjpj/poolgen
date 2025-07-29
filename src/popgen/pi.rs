@@ -12,7 +12,7 @@ pub fn theta_pi(
     window_size_bp: &u64,
     window_slide_size_bp: &u64,
     min_loci_per_window: &u64,
-) -> io::Result<(Array2<f64>, Vec<usize>, Vec<usize>)> {
+) -> Result<(Array2<f64>, Vec<usize>, Vec<usize>), GenericError> {
     let (n, _) = genotypes_and_phenotypes
         .intercept_and_allele_frequencies
         .dim();
@@ -58,9 +58,9 @@ pub fn theta_pi(
     loci_chr_no_redundant_tail.pop();
     let mut loci_pos_no_redundant_tail = loci_pos.to_owned();
     loci_pos_no_redundant_tail.pop();
-    // println!("loci_idx={:?}", loci_idx);
-    // println!("loci_chr_no_redundant_tail={:?}", loci_chr_no_redundant_tail);
-    // println!("loci_pos_no_redundant_tail={:?}", loci_pos_no_redundant_tail);
+    // log::info!("loci_idx={:?}", loci_idx);
+    // log::info!("loci_chr_no_redundant_tail={:?}", loci_chr_no_redundant_tail);
+    // log::info!("loci_pos_no_redundant_tail={:?}", loci_pos_no_redundant_tail);
     // Define sliding windows
     let (windows_idx_head, windows_idx_tail) = define_sliding_windows(
         &loci_chr_no_redundant_tail,
@@ -70,10 +70,10 @@ pub fn theta_pi(
         min_loci_per_window,
     )
     .unwrap();
-    // println!("fst={:?}", fst);
-    // println!("l={:?}", l);
-    // println!("windows_idx_head={:?}", windows_idx_head);
-    // println!("windows_idx_tail={:?}", windows_idx_tail);
+    // log::info!("fst={:?}", fst);
+    // log::info!("l={:?}", l);
+    // log::info!("windows_idx_head={:?}", windows_idx_head);
+    // log::info!("windows_idx_tail={:?}", windows_idx_tail);
     // Take the means per window
     let n_windows = windows_idx_head.len();
     assert!(n_windows > 0, "There were no windows defined. Please check the sync file, the window size, slide size, and the minimum number of loci per window.");
@@ -90,9 +90,9 @@ pub fn theta_pi(
                 };
         }
     }
-    // println!("windows_idx_head={:?}", windows_idx_head);
-    // println!("windows_idx_tail={:?}", windows_idx_tail);
-    // println!("pi_per_pool_per_window={:?}", pi_per_pool_per_window);
+    // log::info!("windows_idx_head={:?}", windows_idx_head);
+    // log::info!("windows_idx_tail={:?}", windows_idx_tail);
+    // log::info!("pi_per_pool_per_window={:?}", pi_per_pool_per_window);
     Ok((pi_per_pool_per_window, windows_idx_head, windows_idx_tail))
 }
 
@@ -103,15 +103,14 @@ pub fn pi(
     min_loci_per_window: &u64,
     fname_input: &String,
     fname_output: &String,
-) -> io::Result<String> {
+) -> Result<String, GenericError> {
     // Calculate heterozygosities
     let (pi_per_pool_per_window, windows_idx_head, windows_idx_tail) = theta_pi(
         genotypes_and_phenotypes,
         window_size_bp,
         window_slide_size_bp,
         min_loci_per_window,
-    )
-    .unwrap();
+    )?;
     let n = pi_per_pool_per_window.ncols();
     let n_windows = pi_per_pool_per_window.nrows();
     assert!(n_windows==windows_idx_head.len(), "Please check the number of windows in the pi estimates and the starting indices of each window.");
@@ -247,7 +246,7 @@ mod tests {
             )
             .unwrap(),
         };
-        println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
+        log::info!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
         // Outputs
         let out = pi(
             &genotypes_and_phenotypes,

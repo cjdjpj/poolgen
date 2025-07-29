@@ -105,11 +105,11 @@ pub fn penalise_lasso_like(
     let (b_hat, alphas, lambdas) =
         penalised_lambda_path_with_k_fold_cross_validation(x, y, row_idx, 1.00, false, 0.1, 10)
             .unwrap();
-    // println!("##############################");
+    // log::info!("##############################");
     // let (train, valid) = linfa_datasets::diabetes().split_with_ratio(0.90);
-    // println!("valid={:?}", valid);
-    // println!("##############################");
-    // println!("{:?}: {:?}", function_name!().to_owned(), b_hat);
+    // log::info!("valid={:?}", valid);
+    // log::info!("##############################");
+    // log::info!("{:?}: {:?}", function_name!().to_owned(), b_hat);
     Ok((
         b_hat,
         function_name!().to_owned()
@@ -137,8 +137,8 @@ pub fn penalise_ridge_like(
     let (b_hat, alphas, lambdas) =
         penalised_lambda_path_with_k_fold_cross_validation(x, y, row_idx, 0.00, false, 0.1, 10)
             .unwrap();
-    // println!("##############################");
-    // println!("{:?}: {:?}", function_name!().to_owned(), b_hat);
+    // log::info!("##############################");
+    // log::info!("{:?}: {:?}", function_name!().to_owned(), b_hat);
     Ok((
         b_hat,
         function_name!().to_owned()
@@ -166,8 +166,8 @@ pub fn penalise_glmnet(
     let (b_hat, alphas, lambdas) =
         penalised_lambda_path_with_k_fold_cross_validation(x, y, row_idx, -0.1, false, 0.1, 10)
             .unwrap();
-    // println!("##############################");
-    // println!("{:?}: {:?}", function_name!().to_owned(), b_hat);
+    // log::info!("##############################");
+    // log::info!("{:?}: {:?}", function_name!().to_owned(), b_hat);
     Ok((
         b_hat,
         function_name!().to_owned()
@@ -195,8 +195,8 @@ pub fn penalise_lasso_like_with_iterative_proxy_norms(
     let (b_hat, alphas, lambdas) =
         penalised_lambda_path_with_k_fold_cross_validation(x, y, row_idx, 1.00, true, 0.1, 10)
             .unwrap();
-    // println!("##############################");
-    // println!("{:?}: {:?}", function_name!().to_owned(), b_hat);
+    // log::info!("##############################");
+    // log::info!("{:?}: {:?}", function_name!().to_owned(), b_hat);
     Ok((
         b_hat,
         function_name!().to_owned()
@@ -224,8 +224,8 @@ pub fn penalise_ridge_like_with_iterative_proxy_norms(
     let (b_hat, alphas, lambdas) =
         penalised_lambda_path_with_k_fold_cross_validation(x, y, row_idx, 1.00, true, 0.1, 10)
             .unwrap();
-    // println!("##############################");
-    // println!("{:?}: {:?}", function_name!().to_owned(), b_hat);
+    // log::info!("##############################");
+    // log::info!("{:?}: {:?}", function_name!().to_owned(), b_hat);
     Ok((
         b_hat,
         function_name!().to_owned()
@@ -432,7 +432,7 @@ fn k_split(row_idx: &Vec<usize>, mut k: usize) -> io::Result<(Vec<usize>, usize,
     let mut s = (n as f64 / k as f64).floor() as usize;
     while s < 10 {
         if n < 20 {
-            println!("Warning: number of pools is less than 20, so we're using k=2.");
+            log::info!("Warning: number of pools is less than 20, so we're using k=2.");
             k = 2;
             s = (n as f64 / k as f64).floor() as usize;
             break;
@@ -593,14 +593,14 @@ fn penalised_lambda_path_with_k_fold_cross_validation(
                     }
                 },
             );
-            // println!("min_error={:?}", min_error);
-            // println!("mean_error_per_rep_across_folds={:?}", mean_error_per_rep_across_folds);
-            // println!("lambda_path_counts={:?}", lambda_path_counts);
+            // log::info!("min_error={:?}", min_error);
+            // log::info!("mean_error_per_rep_across_folds={:?}", mean_error_per_rep_across_folds);
+            // log::info!("lambda_path_counts={:?}", lambda_path_counts);
             let ((idx_0, idx_1), _) = mean_error_per_rep_across_folds
                 .indexed_iter()
                 .find(|((_i, _j), &x)| x == min_error)
                 .unwrap();
-            // println!("lambda_path[(idx_0, idx_1)]={:?}", lambda_path[(idx_0, idx_1)]);
+            // log::info!("lambda_path[(idx_0, idx_1)]={:?}", lambda_path[(idx_0, idx_1)]);
             for a in 0..l {
                 if alpha_path[(idx_0, idx_1)] == parameters_path[a] {
                     alpha_path_counts[a] += 1;
@@ -611,7 +611,7 @@ fn penalised_lambda_path_with_k_fold_cross_validation(
             }
         }
         // Find the mode alpha and lambda
-        // println!("lambda_path_counts={:?}", lambda_path_counts);
+        // log::info!("lambda_path_counts={:?}", lambda_path_counts);
         let alpha_max_count = alpha_path_counts.fold(0, |max, &x| if x > max { x } else { max });
         let (alpha_idx, _) = alpha_path_counts
             .indexed_iter()
@@ -648,7 +648,7 @@ fn penalised_lambda_path_with_k_fold_cross_validation(
 
         // Note: Lasso/Ridge and glmnet have different best paramaters even though for example lasso seems to get the best performance while glmnet failed to get the same result even though it should given it searches other alphas including alpha=1.00 in lasso.
         //       This is because of the stochasticity per fold, i.e. glmnet might get an alpha  not equal to 1 which results in better performance.
-        // println!("min_error={}; alpha={:?}; lambda={:?}", min_error, alphas, lambdas);
+        // log::info!("min_error={}; alpha={:?}; lambda={:?}", min_error, alphas, lambdas);
         let b_hat_penalised_2d: Array2<f64> = if iterative == false {
             expand_and_contract(&b_hat, &b_hat, alphas[j], lambdas[j]).unwrap()
         } else {
@@ -660,9 +660,9 @@ fn penalised_lambda_path_with_k_fold_cross_validation(
             b_hat_penalised[(i, j)] = b_hat_penalised_2d[(i, j)];
         }
     }
-    // println!("#########################################");
-    // println!("alphas={:?}", alphas);
-    // println!("lambdas={:?}", lambdas);
+    // log::info!("#########################################");
+    // log::info!("alphas={:?}", alphas);
+    // log::info!("lambdas={:?}", lambdas);
     Ok((b_hat_penalised, alphas, lambdas))
     // Ok((b_hat_proxy, vec![0.0], vec![0.0]))
 }
@@ -728,15 +728,15 @@ mod tests {
         )
         .unwrap();
 
-        println!("b_hat={:?}", b_hat);
-        println!(
+        log::info!("b_hat={:?}", b_hat);
+        log::info!(
             "n_non_zero={:?}",
             b_hat.fold(0, |sum, x| if x.abs() > 1e-7 { sum + 1 } else { sum + 0 })
         );
-        println!("b_hat[(1, 0)]={:?}", b_hat[(1, 0)]);
-        println!("b_hat[(10, 0)]={:?}", b_hat[(10, 0)]);
-        println!("b_hat[(100, 0)]={:?}", b_hat[(100, 0)]);
-        println!("b_ha500[(500, 0)]={:?}", b_hat[(500, 0)]);
+        log::info!("b_hat[(1, 0)]={:?}", b_hat[(1, 0)]);
+        log::info!("b_hat[(10, 0)]={:?}", b_hat[(10, 0)]);
+        log::info!("b_hat[(100, 0)]={:?}", b_hat[(100, 0)]);
+        log::info!("b_ha500[(500, 0)]={:?}", b_hat[(500, 0)]);
 
         // assert_eq!(0, 1);
     }

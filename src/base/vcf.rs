@@ -9,14 +9,16 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 impl Parse<VcfLine> for String {
     /// Parse a line of vcf into a `VcfLine` struct corresponding to a locus, i.e. representing the allele counts of one or more pools in a single locus
-    fn lparse(&self) -> io::Result<Box<VcfLine>> {
+    fn lparse(&self) -> Result<Box<VcfLine>, GenericError> {
         let raw_locus_data: Box<Vec<&str>> = Box::new(self.split("\t").collect());
         // Chromosome or scaffold name
         let chromosome: String = raw_locus_data[0].to_owned();
         // Position or locus coordinate in the genome assembly
         let position = match raw_locus_data[1].parse::<u64>() {
             Ok(x) => x,
-            Err(_) => return Err(Error::new(ErrorKind::Other, "Please check the format of the input vcf file as position is not a valid integer (i.e. u64).".to_owned())),
+            Err(_) => return Err(GenericError::Fatal(
+                "Please check the format of the input vcf file as position is not a valid integer (i.e. u64).".to_string()
+            ))
         };
         // Allele in the reference genome assembly
         let reference_allele = match raw_locus_data[3].to_owned().parse::<char>() {
@@ -43,7 +45,9 @@ impl Parse<VcfLine> for String {
         let idx = if idx.len() == 1 {
             idx[0]
         } else {
-            return Err(Error::new(ErrorKind::Other, "Please check the format of the input vcf file as the allele depths (AD attribute) were not generated.".to_owned()));
+            return Err(GenericError::Fatal(
+                "Please check the format of the input vcf file as the allele depths (AD attribute) were not generated.".to_string()
+            ))
         };
         // Iterate across pools to extract the allele depths
         for i in 9..raw_locus_data.len() {
@@ -70,7 +74,7 @@ impl Parse<VcfLine> for String {
 
 impl Filter for VcfLine {
     /// Parse the `VcfLine` into `AlleleCounts`
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>> {
+    fn to_counts(&self) -> Result<Box<LocusCounts>, GenericError> {
         let mut alleles_vector = vec![self.reference_allele.to_string()];
         for a in &self.alternative_alleles {
             alleles_vector.push(a.to_string());
@@ -92,7 +96,7 @@ impl Filter for VcfLine {
     }
 
     /// Parse `VcfLine` into `AlleleFrequencies`
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, GenericError> {
         let locus_counts = self.to_counts().unwrap();
         let n = locus_counts.matrix.nrows();
         let p = locus_counts.matrix.ncols();
@@ -114,7 +118,7 @@ impl Filter for VcfLine {
     /// Filter `VcfLine` by:
     /// - removing the entire locus if the locus is fixed, i.e. only 1 allele was found or retained after filterings
     /// Note that we are not removing alleles per locus if they fail the minimum allele frequency threshold, only if all alleles fail this threshold, i.e. when the locus is close to being fixed
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<Option<&mut Self>> {
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<Option<&mut Self>, GenericError> {
         // Coverage depth and breadth requirement
         let min_coverage_breadth = (filter_stats.min_coverage_breadth * filter_stats.pool_sizes.len() as f64).ceil() as u32;
         let mut pools_covered = 0;
@@ -136,9 +140,8 @@ impl Filter for VcfLine {
         let allele_frequencies = match self.to_frequencies() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Cannot convert vcf line into allele frequencies.",
+                return Err(GenericError::NonFatal(
+                    "Cannot convert vcf line into allele frequencies.".to_string()
                 ))
             }
         };
@@ -147,6 +150,8 @@ impl Filter for VcfLine {
         let mut m = allele_frequencies.matrix.ncols();
         let mut q: f64;
         let mut j: usize = 1;
+        log::info!("n = {}", n);
+        log::info!("pool_sizes = {}", filter_stats.pool_sizes.len());
         while j < m {
             q = 0.0;
             for i in 0..n {
@@ -239,7 +244,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         outname_ndigits: &usize,
         filter_stats: &FilterStats,
         function: fn(&mut VcfLine, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         let fname = self.filename.clone();
         // Add leading zeros in front of the start file position so that we can sort the output files per chuck or thread properly
         let mut start_string = start.to_string();
@@ -309,7 +314,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         out: &String,
         n_threads: &usize,
         function: fn(&mut VcfLine, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         // Unpack vcf and pool names filenames
         let fname = self.filename.clone();
         // Output filename
@@ -355,7 +360,9 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         let names = if pool_names.len() > 0 {
             pool_names.join("\t")
         } else {
-            return Err(Error::new(ErrorKind::Other, "Pool names not found, please check the header line of the vcf file. Make sure `#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT...` header exists.".to_owned()));
+            return Err(GenericError::Fatal(
+                "Pool names not found, please check the header line of the vcf file. Make sure `#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT...` header exists.".to_owned()
+            ));
         };
         // Find the positions where to split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
@@ -409,7 +416,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         for f in thread_ouputs.lock().unwrap().iter() {
             fnames_out.push(f.to_owned());
         }
-        log::info!("TEMP FILES: {:?}", fnames_out);
+        log::info!("TEMP FILES CREATED: {:?}", fnames_out);
         fnames_out.sort();
         // Iterate across output files from each thread, and concatenate non-empty files
         for f in fnames_out {
@@ -421,6 +428,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             let error_deleting_file = "Unable to remove file: ".to_owned() + &f;
             std::fs::remove_file(f).expect(&error_deleting_file);
         }
+        log::info!("TEMP FILES REMOVED");
         Ok(out)
     }
 }
@@ -433,7 +441,7 @@ mod tests {
     fn test_vcf_methods() {
         let line = "chrA\t323723\t.\tC\tA,CCT\t327.237\t.\tDP=469\tGT:PL:DP:AD\t0/0:0,24,239:7:7,0,1\t0/0:0,15,194:5:5,0,2\t0/1:42,0,61:6:4,2,1\t0/1:23,0,71:9:7,1,0\t0/1:75,0,132:14:6,5,2\t0/0:0,37,202:7:7,0,1\t0/0:0,15,235:5:5,0,1\t0/1:59,0,237:9:5,4,0\t0/0:0,27,123:9:9,0,0\t0/1:59,0,123:13:23,3,10".to_owned();
         let vcf_line: VcfLine = *(line.lparse().unwrap());
-        println!("vcf_line={:?}", vcf_line);
+        log::info!("vcf_line={:?}", vcf_line);
         assert_eq!(
             vcf_line,
             VcfLine {
@@ -456,7 +464,7 @@ mod tests {
             }
         );
         let counts = *(vcf_line.to_counts().unwrap());
-        println!("counts={:?}", counts);
+        log::info!("counts={:?}", counts);
         assert_eq!(
             counts,
             LocusCounts {
@@ -474,7 +482,7 @@ mod tests {
             }
         );
         let frequencies = *(vcf_line.to_frequencies().unwrap());
-        println!("frequencies={:?}", frequencies);
+        log::info!("frequencies={:?}", frequencies);
         assert_eq!(
             frequencies,
             LocusFrequencies {
@@ -541,11 +549,11 @@ mod tests {
         };
         let mut filtered_vcf_1 = vcf_line.clone();
         let mut filtered_vcf_2 = vcf_line.clone();
-        println!(
+        log::info!(
             "filtered_vcf_1={:?}",
             filtered_vcf_1.filter(&filter_stats_1)
         );
-        println!(
+        log::info!(
             "filtered_vcf_2={:?}",
             filtered_vcf_2.filter(&filter_stats_2)
         );
@@ -559,7 +567,7 @@ mod tests {
 
         let mut vcf_line_2_sync = vcf_line.clone();
         let sync_line = vcf_to_sync(&mut vcf_line_2_sync, &filter_stats_1).unwrap();
-        println!("sync_line={:?}", sync_line);
+        log::info!("sync_line={:?}", sync_line);
         assert_eq!(sync_line, "chrA\t323723\tC\t0:0:7:0:1:0\t0:0:5:0:2:0\t2:0:4:0:1:0\t1:0:7:0:0:0\t5:0:6:0:2:0\t0:0:7:0:1:0\t0:0:5:0:1:0\t4:0:5:0:0:0\t0:0:9:0:0:0\t3:0:23:0:10:0\n".to_owned());
 
         let file_vcf = FileVcf {
@@ -573,7 +581,7 @@ mod tests {
                 vcf_to_sync,
             )
             .unwrap();
-        println!("output={:?}", output);
+        log::info!("output={:?}", output);
         // assert_eq!(0, 1);
     }
 }

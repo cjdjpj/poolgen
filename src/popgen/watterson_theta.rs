@@ -9,7 +9,7 @@ fn polymorphic_loci_per_pool(
     genotypes_and_phenotypes: &GenotypesAndPhenotypes,
     loci_idx: &Vec<usize>,
     idx: usize,
-) -> io::Result<Vec<u64>> {
+) -> Result<Vec<u64>, GenericError> {
     let (n, _) = genotypes_and_phenotypes
         .intercept_and_allele_frequencies
         .dim();
@@ -39,7 +39,7 @@ pub fn theta_watterson(
     window_size_bp: &u64,
     window_slide_size_bp: &u64,
     min_loci_per_window: &u64,
-) -> io::Result<(Array2<f64>, Vec<usize>, Vec<usize>)> {
+) -> Result<(Array2<f64>, Vec<usize>, Vec<usize>), Error> {
     let (n, _) = genotypes_and_phenotypes
         .intercept_and_allele_frequencies
         .dim();
@@ -77,9 +77,9 @@ pub fn theta_watterson(
     while i < l {
         let chr = loci_chr[i].to_owned();
         let pos = loci_pos[i];
-        // println!("i={:?}", i);
-        // println!("idx_head={:?}", idx_head);
-        // println!("idx_tail={:?}", idx_tail);
+        // log::info!("i={:?}", i);
+        // log::info!("idx_head={:?}", idx_head);
+        // log::info!("idx_tail={:?}", idx_tail);
         // Did we reach the end of the chromosome or the end of the window according to window size?
         if (&chr != chr_head.last().unwrap()) | (pos > (pos_head.last().unwrap() + window_size_bp))
         {
@@ -154,7 +154,7 @@ pub fn theta_watterson(
     let mut out_cov: Vec<u64> = vec![cov[0]];
     let mut out_polymorphic: Vec<Vec<u64>> = vec![polymorphic[0].clone()];
     for i in 1..n_windows {
-        // println!("out_idx_tail={:?}", out_idx_tail);
+        // log::info!("out_idx_tail={:?}", out_idx_tail);
         if &idx_tail[i] != out_idx_tail.last().unwrap() {
             out_idx_head.push(idx_head[i]);
             out_idx_tail.push(idx_tail[i]);
@@ -196,7 +196,7 @@ pub fn watterson_estimator(
     min_loci_per_window: &u64,
     fname_input: &String,
     fname_output: &String,
-) -> io::Result<String> {
+) -> Result<String, GenericError> {
     // Calculate Watterson's estimator
     let (watterson_theta_per_pool_per_window, windows_idx_head, windows_idx_tail) =
         theta_watterson(
@@ -207,9 +207,9 @@ pub fn watterson_estimator(
             min_loci_per_window,
         )
         .unwrap();
-    // println!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
+    // log::info!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
     let (n_windows, n) = watterson_theta_per_pool_per_window.dim();
-    // println!("n={}; n_windows={}", n, n_windows);
+    // log::info!("n={}; n_windows={}", n, n_windows);
     let vec_watterson_theta_across_windows = watterson_theta_per_pool_per_window
         .mean_axis(Axis(0))
         .unwrap();
@@ -343,7 +343,7 @@ mod tests {
             )
             .unwrap(),
         };
-        println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
+        log::info!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
         // Outputs
         let out = watterson_estimator(
             &genotypes_and_phenotypes,
@@ -379,9 +379,9 @@ mod tests {
                 }
             }
         }
-        println!("watterson={:?}", watterson);
+        log::info!("watterson={:?}", watterson);
         let watterson: Array2<f64> = Array2::from_shape_vec((5, 3), watterson).unwrap();
-        println!("watterson={:?}", watterson);
+        log::info!("watterson={:?}", watterson);
         let pop2_locus1 = watterson[(1, 1)]; // locus fixed, i.e. watterson=0.0
         let pop2_locus2 = watterson[(1, 2)]; // locus fixed, i.e. watterson=0.0
         let pop3_locus1 = watterson[(2, 1)]; // locus fixed, i.e. watterson=0.0

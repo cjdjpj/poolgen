@@ -24,7 +24,7 @@ pub fn pearsons_correlation(
             .zip(y.iter())
             .filter(|&(&x, &y)| (!x.is_nan()) & (!y.is_nan()))
             .unzip();
-        // println!("q.0={:?}; q.1={:?}", q.0, q.1);
+        // log::info!("q.0={:?}; q.1={:?}", q.0, q.1);
         (
             Array1::from_vec(filtered_vectors.0),
             Array1::from_vec(filtered_vectors.1),
@@ -164,8 +164,8 @@ mod tests {
         };
         let phenotypes: Array2<f64> = y_.clone().into_shape((y_.len(), 1)).unwrap();
         let mut locus_counts_and_phenotypes = LocusCountsAndPhenotypes {
-            locus_counts: locus_counts,
-            phenotypes: phenotypes,
+            locus_counts,
+            phenotypes,
             pool_names: vec!["pool1", "pool2", "pool3", "pool4", "pool5"]
                 .into_iter()
                 .map(|x| x.to_owned())
@@ -185,7 +185,7 @@ mod tests {
             &"sensible_corr".to_owned(),
         )
         .unwrap();
-        println!("corr_with_2_nan={:?}", corr_with_2_nan);
+        log::info!("corr_with_2_nan={:?}", corr_with_2_nan);
         assert_eq!(sensible_round(corr_with_2_nan.0, 2), 1.00);
         let corr_with_3_nan = pearsons_correlation(
             &Array1::from_vec(vec![0.1, 0.2, f64::NAN, f64::NAN, 0.5, 0.6]).view(),
@@ -193,7 +193,7 @@ mod tests {
             &"sensible_corr".to_owned(),
         )
         .unwrap();
-        println!("corr_with_3_nan={:?}", corr_with_3_nan);
+        log::info!("corr_with_3_nan={:?}", corr_with_3_nan);
         assert_eq!(sensible_round(corr_with_3_nan.0, 2), 1.00);
         let corr_with_nan = pearsons_correlation(
             &Array1::from_vec(vec![f64::NAN, f64::NAN, f64::NAN]).view(),
@@ -201,7 +201,7 @@ mod tests {
             &"sensible_corr".to_owned(),
         )
         .unwrap();
-        println!("corr_with_nan={:?}", corr_with_nan);
+        log::info!("corr_with_nan={:?}", corr_with_nan);
         assert_eq!(corr_with_nan.0.is_nan(), true);
     }
 }

@@ -152,9 +152,9 @@ impl Regression for UnivariateOrdinaryLeastSquares {
             } else {
                 self.pval[i] = 2.00 * (1.00 - d.cdf(self.t[i].abs()));
             }
-            // println!("self.b[i]={:?}", self.b[i]);
-            // println!("self.t[i]={:?}", self.t[i]);
-            // println!("self.pval[i]={:?}", self.pval[i]);
+            // log::info!("self.b[i]={:?}", self.b[i]);
+            // log::info!("self.t[i]={:?}", self.t[i]);
+            // log::info!("self.pval[i]={:?}", self.pval[i]);
         }
         Ok(self)
     }
@@ -280,7 +280,7 @@ pub fn ols_with_covariate(
     xxt_eigen_variance_explained: f64,
     fname_input: &String,
     fname_output: &String,
-) -> io::Result<String> {
+) -> Result<String, GenericError> {
     // Check that a output file can be created, but don't create it.
     let _ = std::fs::OpenOptions::new().write(true).create_new(true).open(&fname_output).map(|_| std::fs::remove_file(&fname_output)).expect("Cannot write to output file");
     // Remove pools with missing phenotype information
@@ -508,8 +508,8 @@ mod tests {
             }
         }
 
-        println!("y_pool={:?}", y_pool);
-        println!("x_pool={:?}", x_pool);
+        log::info!("y_pool={:?}", y_pool);
+        log::info!("x_pool={:?}", x_pool);
 
         // Test ols()
         let (b_hat, _var, pval) = ols(&x, &y, false).unwrap();
@@ -518,9 +518,9 @@ mod tests {
         for i in &idx_b {
             pval_q_sum += pval[(*i, 0)];
         }
-        println!("x={:?}; y={:?}", x, y);
-        println!("b={:?}; b_hat={:?}", b, b_hat);
-        println!("pval={:?}; pval_q_sum={}", pval, pval_q_sum);
+        log::info!("x={:?}; y={:?}", x, y);
+        log::info!("b={:?}; b_hat={:?}", b, b_hat);
+        log::info!("pval={:?}; pval_q_sum={}", pval, pval_q_sum);
         assert_eq!(q, q_hat); // We are recapturing the simulated predictors with non-zero effects, and ...
         assert_eq!(sensible_round(pval_q_sum, 7), 0.0); // the p-values are significant.
 
@@ -612,9 +612,9 @@ mod tests {
         // .unwrap();
 
         // let (beta, var_beta, pval) = ols(&x, &y, true).unwrap();
-        // println!("beta={:?}", beta);
-        // println!("var_beta={:?}", var_beta);
-        // println!("pval={:?}", pval);
+        // log::info!("beta={:?}", beta);
+        // log::info!("var_beta={:?}", var_beta);
+        // log::info!("pval={:?}", pval);
         // // assert_eq!(0, 1);
         // let p1 = beta.nrows();
         // let k1 = beta.ncols();

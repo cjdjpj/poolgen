@@ -98,8 +98,8 @@ impl Count for GenotypesAndPhenotypes {
 }
 
 impl Parse<LocusCounts> for String {
-    // Parse a line of pileup into PileupLine struct
-    fn lparse(&self) -> io::Result<Box<LocusCounts>> {
+    // Parse a line of pileup into LocusCounts struct
+    fn lparse(&self) -> Result<Box<LocusCounts>, GenericError> {
         // Remove trailing newline character in Unix-like (\n) and Windows (\r)
         let mut line = self.clone();
         if line.ends_with('\n') {
@@ -110,7 +110,9 @@ impl Parse<LocusCounts> for String {
         }
         // Ignore commented-out lines (i.e. '#' => 35)
         if line.as_bytes()[0] == 35 as u8 {
-            return Err(Error::new(ErrorKind::Other, "Commented out line"));
+            return Err(GenericError::NonFatal (
+                "Commented out line".to_string(),
+            ))
         }
         // Parse the sync line
         let vec_line = line
@@ -124,9 +126,9 @@ impl Parse<LocusCounts> for String {
         let chromosome = vec_line[0].to_owned();
         let position = match vec_line[1].parse::<u64>() {
             Ok(x) => x,
-            Err(_) => {
-                panic!("Please check format of the file: position is not an integer.");
-            }
+            Err(_) => return Err(GenericError::Fatal(
+                "Please check format of file: position is not an integer.".to_string()
+            ))
         };
         let alleles_vector = vec!["A", "T", "C", "G", "N", "D"]
             .into_iter()
@@ -155,13 +157,13 @@ impl Parse<LocusCounts> for String {
 
 impl Filter for LocusCounts {
     // PileupLine to AlleleCounts
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>> {
+    fn to_counts(&self) -> Result<Box<LocusCounts>, GenericError> {
         let out = self.clone();
         Ok(Box::new(out))
     }
 
     // PileupLine to AlleleFrequencies
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, GenericError> {
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
         // let row_sums = self.matrix.sum_axis(Axis(1)); // summation across the columns which means sum of all elements per row
@@ -190,7 +192,7 @@ impl Filter for LocusCounts {
     }
 
     // Filter PileupLine by minimum coverage, minimum quality
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<Option<&mut Self>> {
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<Option<&mut Self>, GenericError> {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Preliminary check of the structure format
         self.check().unwrap();
@@ -209,7 +211,7 @@ impl Filter for LocusCounts {
                 self.matrix.remove_index(Axis(1), i as usize);
             }
         }
-        // println!("self={:?}", self);
+        // log::info!("self={:?}", self);
         // Filter by minimum coverage
         // Summation across the columns which means sum of all elements per row while ignoring NANs!
         let sum_coverage = self.matrix.map_axis(Axis(1), |r| {
@@ -240,9 +242,8 @@ impl Filter for LocusCounts {
         let mut allele_frequencies = match self.to_frequencies() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Cannot convert locus counts to locus frequencies.",
+                return Err(GenericError::Fatal(
+                    "Cannot convert locus counts to locus frequencies.".to_string()
                 ))
             }
         };
@@ -303,7 +304,7 @@ impl Filter for LocusCounts {
 
 impl Filter for LocusFrequencies {
     // PileupLine to AlleleCounts
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>> {
+    fn to_counts(&self) -> Result<Box<LocusCounts>, GenericError> {
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
         let mut matrix: Array2<u64> = Array2::from_elem((n, p), 0);
@@ -315,9 +316,8 @@ impl Filter for LocusFrequencies {
                 .filter(|&&x| x != 0.0)
                 .fold(row[0], |min, &x| if x < min { x } else { min });
             if min == 0.0 {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "At least one of the pools have no coverage.",
+                return Err(GenericError::Fatal(
+                    "At least one of the pools have no coverage.".to_string()
                 ));
             }
             max_n = 1.00 / min;
@@ -334,7 +334,7 @@ impl Filter for LocusFrequencies {
     }
 
     // PileupLine to AlleleFrequencies
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, GenericError> {
         // Recompute the frequencies using frequencies when the number of colulmns or one or more alleles have been filtered out/removed
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
@@ -374,7 +374,7 @@ impl Filter for LocusFrequencies {
     }
 
     // Filter PileupLine by minimum coverage, minimum quality
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<Option<&mut Self>> {
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<Option<&mut Self>, GenericError> {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Also, cannot filter by minimum coverage as that data is lost from counts to frequencies conversion
         // Preliminary check of the structure format
@@ -394,14 +394,13 @@ impl Filter for LocusFrequencies {
                 self.matrix.remove_index(Axis(1), i as usize);
             }
         }
-        // println!("self={:?}", self);
+        // log::info!("self={:?}", self);
         // Recompute frequencies after removing Ns
         let recomputed_self = match self.to_frequencies() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "T_T Cannot convert locus counts to locus frequencies.",
+                return Err(GenericError::Fatal(
+                    "T_T Cannot convert locus counts to locus frequencies.".to_string()
                 ))
             }
         };
@@ -414,9 +413,8 @@ impl Filter for LocusFrequencies {
         let mut allele_frequencies = match self.to_frequencies() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Cannot convert locus counts to locus frequencies.",
+                return Err(GenericError::Fatal(
+                    "Cannot convert locus counts to locus frequencies.".to_string()
                 ))
             }
         };
@@ -485,7 +483,7 @@ impl Sort for LocusFrequencies {
                 .filter(|&&x| !x.is_nan())
                 .fold(0.0, |sum, &x| sum + x)
         }); // ignoring NANs!
-            // println!("self={:?}", self);
+            // log::info!("self={:?}", self);
         if decreasing {
             idx.sort_by(|&a, &b| column_sums[b].partial_cmp(&column_sums[a]).unwrap());
         } else {
@@ -594,9 +592,9 @@ impl RemoveMissing for GenotypesAndPhenotypes {
                 "All pools have missing data. Please check the phenotype file.",
             ));
         }
-        // println!("self={:?}", self);
-        // println!("self.phenotypes={:?}", self.phenotypes);
-        // println!("idx={:?}", idx);
+        // log::info!("self={:?}", self);
+        // log::info!("self.phenotypes={:?}", self.phenotypes);
+        // log::info!("idx={:?}", idx);
         return Ok(self);
     }
 }
@@ -611,7 +609,7 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
         outname_ndigits: &usize,
         filter_stats: &FilterStats,
         function: fn(&mut LocusCounts, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         let fname = self.filename.clone();
         // Add leading zeros in front of the start file position so that we can sort the output files per chuck or thread properly
         let mut start_string = start.to_string();
@@ -651,20 +649,16 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
                     line.pop();
                 }
             }
-            // Parse the pileup line
             let mut locus_counts: Box<LocusCounts> = match line.lparse() {
-                Ok(x) => x,
-                Err(x) => match x.kind() {
-                    ErrorKind::Other => continue,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            "T_T Input sync file error, i.e. '".to_owned()
-                                + &fname
-                                + "' at line with the first 20 characters as: "
-                                + &line[0..20]
-                                + ".",
-                        ))
+                Ok(parsed_line) => parsed_line,
+                Err(e) => match e {
+                    GenericError::NonFatal(msg) => {
+                        log::warn!("Line {} ignored: {}", i, msg);
+                        continue;
+                    }
+                    GenericError::Fatal(msg) => {
+                        std::fs::remove_file(&out).ok();
+                        return Err(GenericError::Fatal(msg));
                     }
                 },
             };
@@ -683,7 +677,7 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
         out: &String,
         n_threads: &usize,
         function: fn(&mut LocusCounts, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         // Unpack pileup and pool names filenames
         let fname = self.filename.clone();
         let test = self.test.clone();
@@ -796,7 +790,7 @@ impl
         outname_ndigits: &usize,
         filter_stats: &FilterStats,
         function: fn(&mut LocusCountsAndPhenotypes, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         let fname = self.filename_sync.clone();
         // Add leading zeros in front of the start file position so that we can sort the output files per chuck or thread properly
         let mut start_string = start.to_string();
@@ -836,20 +830,18 @@ impl
                     line.pop();
                 }
             }
-            // Parse the pileup line
+
+            // Parse the sync line
             let locus_counts: Box<LocusCounts> = match line.lparse() {
-                Ok(x) => x,
-                Err(x) => match x.kind() {
-                    ErrorKind::Other => continue,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            "T_T Input sync file error, i.e. '".to_owned()
-                                + &fname
-                                + "' at line with the first 20 characters as: "
-                                + &line[0..20]
-                                + ".",
-                        ))
+                Ok(parsed_line) => parsed_line,
+                Err(e) => match e {
+                    GenericError::NonFatal(msg) => {
+                        log::warn!("Line {} ignored: {}", i, msg);
+                        continue;
+                    }
+                    GenericError::Fatal(msg) => {
+                        std::fs::remove_file(&out).ok();
+                        return Err(GenericError::Fatal(msg));
                     }
                 },
             };
@@ -873,7 +865,7 @@ impl
         out: &String,
         n_threads: &usize,
         function: fn(&mut LocusCountsAndPhenotypes, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         // Unpack pileup and pool names filenames
         let fname = self.filename_sync.clone();
         let test = self.test.clone();
@@ -1002,20 +994,17 @@ impl LoadAll for FileSyncPhen {
                     line.pop();
                 }
             }
-            // Parse the pileup line
-            let mut locus_counts: LocusCounts = match line.lparse() {
-                Ok(x) => *x,
-                Err(x) => match x.kind() {
-                    ErrorKind::Other => continue,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            "T_T Input sync file error, i.e. '".to_owned()
-                                + &fname
-                                + "' at line with the first 20 characters as: "
-                                + &line[0..20]
-                                + ".",
-                        ))
+
+            // Parse the sync line
+            let mut locus_counts: LocusCounts= match line.lparse() {
+                Ok(parsed_line) => *parsed_line,
+                Err(e) => match e {
+                    GenericError::NonFatal(msg) => {
+                        log::warn!("Line {} ignored: {}", i, msg);
+                        continue;
+                    }
+                    GenericError::Fatal(msg) => {
+                        std::process::exit(1);
                     }
                 },
             };
@@ -1106,7 +1095,7 @@ impl LoadAll for FileSyncPhen {
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<GenotypesAndPhenotypes> {
+    ) -> Result<GenotypesAndPhenotypes, GenericError> {
         let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).unwrap();
         let n = self.pool_names.len();
         let m = freqs.len(); // total number of loci
@@ -1115,7 +1104,7 @@ impl LoadAll for FileSyncPhen {
         for f in freqs.iter() {
             p += f.matrix.ncols();
         }
-        // println!("p={}", p);
+        // log::info!("p={}", p);
         let mut chromosome: Vec<String> = Vec::with_capacity(p);
         chromosome.push("intercept".to_owned());
         let mut position: Vec<u64> = Vec::with_capacity(p);
@@ -1126,6 +1115,9 @@ impl LoadAll for FileSyncPhen {
         let mut l: usize = 0; // locus index
         let mut mat: Array2<f64> = Array2::from_elem((n, p), 1.0);
         let mut j: usize = 1; // SNP index across loci, start after the intercept
+        if freqs.len() != cnts.len() {
+            return Err(GenericError::Fatal("Frequencies and counts not the same length".to_string()))
+        }
         assert_eq!(
             freqs.len(),
             cnts.len(),
@@ -1156,15 +1148,15 @@ impl LoadAll for FileSyncPhen {
             }
             l += 1; // next locus
         }
-        // println!("mat={:?}", mat.slice(s![0..5, 0..4]));
-        // println!("chromosome[0]={:?}", chromosome[0]);
-        // println!("chromosome[1]={:?}", chromosome[1]);
-        // println!("chromosome[2]={:?}", chromosome[2]);
-        // println!("chromosome[3]={:?}", chromosome[3]);
-        // println!("position[0]={:?}", position[0]);
-        // println!("position[1]={:?}", position[1]);
-        // println!("position[2]={:?}", position[2]);
-        // println!("position[3]={:?}", position[3]);
+        // log::info!("mat={:?}", mat.slice(s![0..5, 0..4]));
+        // log::info!("chromosome[0]={:?}", chromosome[0]);
+        // log::info!("chromosome[1]={:?}", chromosome[1]);
+        // log::info!("chromosome[2]={:?}", chromosome[2]);
+        // log::info!("chromosome[3]={:?}", chromosome[3]);
+        // log::info!("position[0]={:?}", position[0]);
+        // log::info!("position[1]={:?}", position[1]);
+        // log::info!("position[2]={:?}", position[2]);
+        // log::info!("position[3]={:?}", position[3]);
         Ok(GenotypesAndPhenotypes {
             chromosome,
             position,
@@ -1184,7 +1176,7 @@ impl SaveCsv for FileSyncPhen {
         keep_p_minus_1: bool,
         out: &String,
         n_threads: &usize,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         // Output filename
         let out = if *out == "".to_owned() {
             let time = SystemTime::now()
@@ -1266,7 +1258,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
         _keep_p_minus_1: bool,
         out: &String,
         _n_threads: &usize,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         // Note: All input parameters are not used except for one - out, the rest are for other implementations of this trait i.e. filter_stats, keep_p_minus_1, and n_threads
         // Sanity checks
         let (n, p) = self.intercept_and_allele_frequencies.dim();
@@ -1276,12 +1268,24 @@ impl SaveCsv for GenotypesAndPhenotypes {
         let p_ = self.chromosome.len();
         let p__ = self.position.len();
         let p___ = self.allele.len();
-        assert_eq!(p_, p__, "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the positions vector.");
-        assert_eq!(p_, p___, "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the alleles vector.");
-        assert_eq!(p_, p, "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of columns in the allele frequencies matrix.");
-        assert_eq!(n___, n__, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the phenotypes matrix.");
-        assert_eq!(n___, n_, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the coverages matrix.");
-        assert_eq!(n___, n, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the allele frequencies matrix.");
+        if p_ != p__ {
+            return Err(GenericError::Fatal("Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the positions vector.".to_string()));
+        }
+        if p_ != p___ {
+            return Err(GenericError::Fatal("Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the alleles vector.".to_string()));
+        }
+        if p_ != p {
+            return Err(GenericError::Fatal("Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of columns in the allele frequencies matrix.".to_string()));
+        }
+        if n___ != n__ {
+            return Err(GenericError::Fatal("Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the phenotypes matrix.".to_string()));
+        }
+        if n___ != n_ {
+            return Err(GenericError::Fatal("Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the coverages matrix.".to_string()));
+        }
+        if n___ != n {
+            return Err(GenericError::Fatal("Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the allele frequencies matrix.".to_string()));
+        }
         // Output filename
         let out = if *out == "".to_owned() {
             let time = SystemTime::now()
@@ -1603,8 +1607,8 @@ mod tests {
             .write_csv(&filter_stats, true, &"test-write_csv.csv".to_owned(), &1)
             .unwrap();
         assert_eq!(write_csv_outname, "test-write_csv.csv".to_owned());
-        println!("loaded_freqs={:?}", loaded_freqs);
-        println!("len(loaded_freqs)={:?}", loaded_freqs.len());
+        log::info!("loaded_freqs={:?}", loaded_freqs);
+        log::info!("len(loaded_freqs)={:?}", loaded_freqs.len());
         // Assertions
         assert_eq!(expected_output1, counts);
         assert_eq!(expected_output2, frequencies);
@@ -1620,7 +1624,7 @@ mod tests {
             expected_output6.position,
             frequencies_and_phenotypes.position[1]
         );
-        println!(
+        log::info!(
             "frequencies_and_phenotypes={:?}",
             frequencies_and_phenotypes
         );

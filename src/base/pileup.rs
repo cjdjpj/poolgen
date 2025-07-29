@@ -10,32 +10,32 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 impl Parse<PileupLine> for String {
     /// Parse a line of pileup into a `PileupLine` struct corresponding to a locus, i.e. representing the allele counts of one or more pools in a single locus
-    fn lparse(&self) -> io::Result<Box<PileupLine>> {
+    fn lparse(&self) -> Result<Box<PileupLine>, GenericError> {
         let raw_locus_data: Box<Vec<&str>> = Box::new(self.split("\t").collect());
         // Chromosome or scaffold name
         let chromosome: String = raw_locus_data[0].to_owned();
         // Position or locus coordinate in the genome assembly
         let position = match raw_locus_data[1].parse::<u64>() {
             Ok(x) => x,
-            Err(_) => {
-                panic!("Please check format of the file: position is not an integer.");
-            }
+            Err(_) => return Err(GenericError::Fatal(
+                "Please check format of the file: position is not an integer.".to_string()
+            ))
         };
         // Allele in the reference genome assembly
         let reference_allele  = match raw_locus_data[2].to_owned().parse::<char>() {
             Ok(x) => x,
-            Err(_) => {
-                panic!("Please check the format of the input pileup file as the reference allele is not a valid nucleotide base (i.e. not a valid single character).");
-            }
+            Err(_) => return Err(GenericError::Fatal(
+                "Please check the format of the input pileup file as the reference allele is not a valid nucleotide base (i.e. not a valid single character).".to_string()
+            ))
         };
         // List of the number of times the locus was read in each pool
         let mut coverages: Vec<u64> = Vec::new();
         for i in (3..raw_locus_data.len()).step_by(3) {
             let cov = match raw_locus_data[i].to_owned().parse::<u64>() {
                 Ok(x) => x,
-                Err(_) => {
-                    panic!("Please check the format of the input pileup file as coverage field/s is/are not valid integer/s at pool: {}.", &(i/3).to_string());
-                }
+                Err(_) => return Err(GenericError::Fatal(
+                    format!("Please check the format of the input pileup file as coverage field/s is/are not valid integer/s at pool: {}.", &(i/3))
+                ))
             };
             coverages.push(cov);
         }
@@ -55,11 +55,18 @@ impl Parse<PileupLine> for String {
                     let code = raw_read_codes[j];
                     // Are we dealing with indels?
                     if indel_marker.indel {
-                        // Find the firs digit of the number of indel/s
+                        // Find the first digit of the number of indel/s
                         if (indel_marker.count == 0) & (indel_marker.left == 4294967295) {
                             indel_marker.count = match str::from_utf8(&[code]).unwrap().parse::<usize>() {
                                 Ok(x) => x,
-                                Err(_) => return Err(Error::new(ErrorKind::Other, "Check the codes for insertions and deletion, i.e. they must be integers after '+' and '-' at pool: ".to_owned() + &((i-1)/3).to_string() + ".")),
+                                Err(_) => {
+                                    return Err(GenericError::Fatal(
+                                        format!(
+                                            "Please check the codes for insertions and deletion, i.e. they must be integers after '+' and '-' at pool: {}.",
+                                            (i - 1) / 3
+                                        ))
+                                    )
+                                }
                             };
                             continue 'per_pool;
                         }
@@ -166,7 +173,9 @@ impl Parse<PileupLine> for String {
             a = out.read_codes[i].len() as u64;
             q = out.read_qualities[i].len() as u64;
             if (c != a) | (c != q) | (a != q) {
-                return Err(Error::new(ErrorKind::Other, "Please check the format of the input pileup file as the coverages, number of read alleles and read qualities do not match at pool: ".to_owned() + &(i+1).to_string() + "."));
+                return Err(GenericError::Fatal(
+                    format!("Please check the format of the input pileup file as the coverages, number of read alleles and read qualities do not match at pool: {}.", &(i+1)
+                )))
             }
         }
         return Ok(out);
@@ -175,7 +184,7 @@ impl Parse<PileupLine> for String {
 
 impl Filter for PileupLine {
     /// Parse the `PileupLine` into `AlleleCounts`
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>> {
+    fn to_counts(&self) -> Result<Box<LocusCounts>, GenericError> {
         let n: usize = self.coverages.len();
         let p: usize = 6;
         let mut matrix: Array2<u64> = Array2::from_elem((n, p), 0);
@@ -221,7 +230,7 @@ impl Filter for PileupLine {
     }
 
     /// Parse `PileupLine` into `AlleleFrequencies`
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, GenericError> {
         let locus_counts = self.to_counts().unwrap();
         let n = locus_counts.matrix.nrows();
         let p = locus_counts.matrix.ncols();
@@ -243,14 +252,14 @@ impl Filter for PileupLine {
     /// Filter `PileupLine` by:
     /// - removing the entire locus if the locus is fixed, i.e. only 1 allele was found or retained after filterings
     /// Note that we are not removing alleles per locus if they fail the minimum allele frequency threshold, only if all alleles fail this threshold, i.e. when the locus is close to being fixed
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<Option<&mut Self>> {
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<Option<&mut Self>, GenericError> {
         // Convert low quality bases into Ns
         let n = self.read_qualities.len();
         for i in 0..n {
             let mut j: usize = 0;
             while j < self.read_codes[i].len() {
                 if self.read_qualities[i][j] < 33 {
-                    return Err(Error::new(ErrorKind::Other, "Phred score out of bounds."));
+                    return Err(GenericError::Fatal("Phred score out of bounds.".to_string()));
                 } else {
                     let q = f64::powf(10.0, -(self.read_qualities[i][j] as f64 - 33.0) / 10.0);
                     if q > filter_stats.max_base_error_rate {
@@ -302,9 +311,8 @@ impl Filter for PileupLine {
         let allele_frequencies = match self.to_frequencies() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Cannot convert pileup line into allele frequencies.",
+                return Err(GenericError::NonFatal(
+                    "Cannot convert pileup line into allele frequencies.".to_string()
                 ))
             }
         };
@@ -383,7 +391,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
         outname_ndigits: &usize,
         filter_stats: &FilterStats,
         function: fn(&mut PileupLine, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         let fname = self.filename.clone();
         // Add leading zeros in front of the start file position so that we can sort the output files per chuck or thread properly
         let mut start_string = start.to_string();
@@ -424,13 +432,19 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
                 }
             }
             // Parse the pileup line
-            let mut pileup_line: Box<PileupLine> = line.lparse().expect(
-                &("Input file error, i.e. '".to_owned()
-                    + &fname
-                    + "' at line with the first 20 characters as: "
-                    + &line[0..20]
-                    + "."),
-            );
+            let mut pileup_line: Box<PileupLine> = match line.lparse() {
+                Ok(parsed_line) => parsed_line,
+                Err(e) => match e {
+                    GenericError::NonFatal(msg) => {
+                        log::warn!("Line {} ignored: {}", i, msg);
+                        continue;
+                    }
+                    GenericError::Fatal(msg) => {
+                        std::fs::remove_file(&out).ok();
+                        return Err(GenericError::Fatal(msg));
+                    }
+                },
+            };
 
             // Write the line
             let _ = match function(&mut pileup_line, filter_stats) {
@@ -449,7 +463,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
         out: &String,
         n_threads: &usize,
         function: fn(&mut PileupLine, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, GenericError> {
         // Unpack pileup and pool names filenames
         let fname = self.filename.clone();
         // Output filename
@@ -497,20 +511,28 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
             let outname_ndigits = outname_ndigits.clone();
             let filter_stats = filter_stats.clone();
             let thread_ouputs_clone = thread_ouputs.clone(); // Mutated within the current thread worker
-            let thread = std::thread::spawn(move || {
+            let thread = std::thread::spawn(move || -> Result<String, GenericError> {
                 let fname_out_per_thread = self_clone
-                    .per_chunk(&start, &end, &outname_ndigits, &filter_stats, function)
-                    .unwrap();
+                    .per_chunk(&start, &end, &outname_ndigits, &filter_stats, function)?;
                 thread_ouputs_clone
                     .lock()
                     .unwrap()
-                    .push(fname_out_per_thread);
+                    .push(fname_out_per_thread.clone());
+                Ok(fname_out_per_thread)
             });
             thread_objects.push(thread);
         }
         // Waiting for all threads to finish
         for thread in thread_objects {
-            let _ = thread.join().expect("Unknown thread error occured.");
+            match thread.join() {
+                Ok(Ok(_)) => { }
+                Ok(Err(e)) => {
+                    return Err(e);
+                }
+                Err(e) => {
+                    return Err(GenericError::Fatal("Thread failed in way".to_string()));
+                }
+            }
         }
         // Instatiate output file
         let error_writing_file = "Unable to create file: ".to_owned() + &out;
@@ -530,7 +552,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
         for f in thread_ouputs.lock().unwrap().iter() {
             fnames_out.push(f.to_owned());
         }
-        log::info!("TEMP FILES: {:?}", fnames_out);
+        log::info!("TEMP FILES CREATED: {:?}", fnames_out);
         fnames_out.sort();
         // Iterate across output files from each thread, and concatenate non-empty files
         for f in fnames_out {
@@ -542,6 +564,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
             let error_deleting_file = "Unable to remove file: ".to_owned() + &f;
             std::fs::remove_file(f).expect(&error_deleting_file);
         }
+        log::info!("TEMP FILES REMOVED");
         Ok(out)
     }
 }

@@ -3,7 +3,15 @@
 use clap::Args;
 use crate::parse_valid_freq;
 use ndarray::prelude::*;
-use std::io;
+use std::{io,fmt};
+use thiserror::Error;
+
+#[derive(Debug, thiserror::Error, Clone)]
+#[error("{0}")]
+pub enum GenericError {
+    Fatal(String),
+    NonFatal(String),
+}
 
 /// The entry point genotype file struct, i.e. describing the genotype data in pileup format
 /// - `filename` - filename of the pileup file (`*.pileup`)
@@ -312,13 +320,13 @@ pub trait Count {
 }
 
 pub trait Parse<T> {
-    fn lparse(&self) -> io::Result<Box<T>>;
+    fn lparse(&self) -> Result<Box<T>, GenericError>;
 }
 
 pub trait Filter {
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>>;
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>>;
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<Option<&mut Self>>;
+    fn to_counts(&self) -> Result<Box<LocusCounts>, GenericError>;
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, GenericError>;
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<Option<&mut Self>, GenericError>;
 }
 
 pub trait Sort {
@@ -337,7 +345,7 @@ pub trait ChunkyReadAnalyseWrite<T, F> {
         outname_ndigits: &usize,
         filter_stats: &FilterStats,
         function: F,
-    ) -> io::Result<String>
+    ) -> Result<String, GenericError>
     where
         F: Fn(&mut T, &FilterStats) -> Option<String>;
     fn read_analyse_write(
@@ -346,7 +354,7 @@ pub trait ChunkyReadAnalyseWrite<T, F> {
         out: &String,
         n_threads: &usize,
         function: F,
-    ) -> io::Result<String>
+    ) -> Result<String, GenericError>
     where
         F: Fn(&mut T, &FilterStats) -> Option<String>;
 }
@@ -370,7 +378,7 @@ pub trait LoadAll {
         filter_stats: &FilterStats,
         keep_n_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<GenotypesAndPhenotypes>;
+    ) -> Result<GenotypesAndPhenotypes, GenericError>;
 }
 
 pub trait SaveCsv {
@@ -380,7 +388,7 @@ pub trait SaveCsv {
         keep_p_minus_1: bool,
         out: &String,
         n_threads: &usize,
-    ) -> io::Result<String>;
+    ) -> Result<String, GenericError>;
 }
 
 pub trait Regression {
@@ -407,7 +415,7 @@ pub trait CrossValidation<F> {
         k: usize,
         r: usize,
         functions: Vec<F>,
-    ) -> io::Result<PredictionPerformance>
+    ) -> Result<PredictionPerformance, GenericError>
     where
         F: Fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>;
     fn tabulate_predict_and_output(
@@ -416,7 +424,7 @@ pub trait CrossValidation<F> {
         functions: Vec<F>,
         fname_input: &String,
         fname_output: &String,
-    ) -> io::Result<(String, String, Vec<String>)>
+    ) -> Result<(String, String, Vec<String>), GenericError>
     where
         F: Fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>;
 }

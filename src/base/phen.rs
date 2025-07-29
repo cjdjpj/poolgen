@@ -18,7 +18,7 @@ impl Parse<Phen> for FilePhen {
     /// - *Line 4*: maximum phenotype value
     /// - *Line 5*: cummulative pool sizes percentiles (e.g. `0.2,0.4,0.6,0.8,1.0`)
     /// - *Line 6*: phenotype values corresponding to each percentile (e.g. `0.16,0.20,0.23,0.27,0.42`)
-    fn lparse(&self) -> io::Result<Box<Phen>> {
+    fn lparse(&self) -> Result<Box<Phen>, GenericError> {
         let mut pool_names: Vec<String> = vec![];
         let mut pool_sizes: Vec<f64> = vec![];
         if self.format == "default".to_string() {
@@ -158,17 +158,16 @@ impl Parse<Phen> for FilePhen {
                 phen_matrix,
             }));
         } else {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "Invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'",
-            ));
+            return Err(GenericError::Fatal(
+                "Invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'".to_string()
+            ))
         }
     }
 }
 
 impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
     /// Combine the `Phen` struct with the filename of the genotype file in `sync` format, and include the name of the `test` or analysis to perform
-    fn lparse(&self) -> io::Result<Box<FileSyncPhen>> {
+    fn lparse(&self) -> Result<Box<FileSyncPhen>, GenericError> {
         let filename_sync = self.0.filename.clone();
         let test = self.0.test.clone();
         if self.1.format == "default".to_string() {
@@ -196,10 +195,9 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
                 test
             }));
         } else {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "Invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'",
-            ));
+            return Err(GenericError::Fatal (
+                "Invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'".to_string()
+            ))
         }
     }
 }

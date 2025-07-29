@@ -15,7 +15,7 @@ fn least_squares_beta(
     q_prime: &Array1<f64>,
 ) -> f64 {
     let shapes = bound_parameters_with_logit(params, PARAMETER_LOWER_LIMIT, PARAMETER_UPPER_LIMIT);
-    // println!("shapes={:?}", shapes);
+    // log::info!("shapes={:?}", shapes);
     let a_dist = Beta::new(shapes[0], shapes[1]).expect(
         &shapes
             .clone()
@@ -36,7 +36,7 @@ fn least_squares_beta(
         b_sum_of_squares += f64::powf(percs_b[i] - b_dist.cdf(q_prime[i]), 2.0);
     }
     let out = a_sum_of_squares + b_sum_of_squares;
-    // println!("a1={}; a2={}; b1={}; b2={}; out={}", a_shape1, a_shape2, b_shape1, b_shape2, out);
+    // log::info!("a1={}; a2={}; b1={}; b2={}; out={}", a_shape1, a_shape2, b_shape1, b_shape2, out);
     out
 }
 
@@ -68,13 +68,13 @@ fn maximum_likelihood_beta(
         };
         a_log_likelihood += f64::log10(diff_a);
         b_log_likelihood += f64::log10(diff_b);
-        // println!("percs_a[i]={:?}; a_dist.ln_pdf(percs_a[i])={:?}", a_dist.ln_pdf(percs_a[i]), percs_a[i]);
-        // println!("percs_b[i]={:?}; b_dist.ln_pdf(percs_b[i])={:?}", b_dist.ln_pdf(percs_b[i]), percs_b[i]);
+        // log::info!("percs_a[i]={:?}; a_dist.ln_pdf(percs_a[i])={:?}", a_dist.ln_pdf(percs_a[i]), percs_a[i]);
+        // log::info!("percs_b[i]={:?}; b_dist.ln_pdf(percs_b[i])={:?}", b_dist.ln_pdf(percs_b[i]), percs_b[i]);
         // a_log_likelihood += a_dist.ln_pdf(percs_a[i]);
         // b_log_likelihood += b_dist.ln_pdf(percs_b[i]);
     }
     let out = -a_log_likelihood - b_log_likelihood;
-    // println!("a1={}; a2={}; b1={}; b2={}; a_log_likelihood={}; b_log_likelihood={}; out={}", shapes[0], shapes[1], shapes[2], shapes[3], a_log_likelihood, b_log_likelihood, out);
+    // log::info!("a1={}; a2={}; b1={}; b2={}; a_log_likelihood={}; b_log_likelihood={}; out={}", shapes[0], shapes[1], shapes[2], shapes[3], a_log_likelihood, b_log_likelihood, out);
     out
 }
 
@@ -112,9 +112,9 @@ fn gwalpha_minimise_ls(
     percs_b: Array1<f64>,
 ) -> Option<Vec<f64>> {
     let cost = LeastSquaresBeta {
-        q_prime: q_prime,
-        percs_a: percs_a,
-        percs_b: percs_b,
+        q_prime,
+        percs_a,
+        percs_b,
     };
     let res = match Executor::new(cost, solver)
         .configure(|state| state.max_iters(1_000))
@@ -124,7 +124,7 @@ fn gwalpha_minimise_ls(
         Ok(x) => x,
         Err(_) => return None, // Error occurs when the optimiser MoreThuenteLineSearch moves in the wrong direction
     };
-    // println!("CONVERGENCE: {:?}", res.state());
+    // log::info!("CONVERGENCE: {:?}", res.state());
     let params = res.state().param.clone().unwrap();
     let solution =
         bound_parameters_with_logit(&params, PARAMETER_LOWER_LIMIT, PARAMETER_UPPER_LIMIT);
@@ -139,10 +139,10 @@ fn gwalpha_minimise_ml(
     percs_b0: Array1<f64>,
 ) -> Option<Vec<f64>> {
     let cost = MaximumLikelihoodBeta {
-        percs_a: percs_a,
-        percs_b: percs_b,
-        percs_a0: percs_a0,
-        percs_b0: percs_b0,
+        percs_a,
+        percs_b,
+        percs_a0,
+        percs_b0,
     };
     let res = match Executor::new(cost, solver)
         .configure(|state| state.max_iters(1_000))
@@ -152,7 +152,7 @@ fn gwalpha_minimise_ml(
         Ok(x) => x,
         Err(_) => return None, // Error occurs when the optimiser MoreThuenteLineSearch moves in the wrong direction
     };
-    // println!("CONVERGENCE: {:?}", res.state());
+    // log::info!("CONVERGENCE: {:?}", res.state());
     let params = res.state().param.clone().unwrap();
     let solution =
         bound_parameters_with_logit(&params, PARAMETER_LOWER_LIMIT, PARAMETER_UPPER_LIMIT);
@@ -243,13 +243,13 @@ fn prepare_freqs_and_qprime(
     let freqs_a: ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>> =
         locus_frequencies.matrix.column(j);
     let p_a = freqs_a.t().dot(bins); // mean allele frequency across pools
-                                     // println!("p_a={:?}", p_a);
+                                     // log::info!("p_a={:?}", p_a);
                                      // Quantiles per pool (for least squares estimation)
     let mut q_prime: Array1<f64> = Array1::zeros(n);
     for i in 1..n {
         q_prime[i] = (q[i] - min) / (max - min);
     }
-    // println!("q_prime={:?}", q_prime);
+    // log::info!("q_prime={:?}", q_prime);
     // Bins (sums up to 1.0) of the current allele and its additive inverse representing the rest of the alleles
     let mut bins_a = Array1::zeros(n);
     let mut bins_b = Array1::zeros(n);
@@ -257,8 +257,8 @@ fn prepare_freqs_and_qprime(
         bins_a[i] = (freqs_a[i]) * bins[i] / (p_a);
         bins_b[i] = (1.0 - freqs_a[i]) * bins[i] / (1.0 - p_a);
     }
-    // println!("bins_a={:?}", bins_a);
-    // println!("bins_b={:?}", bins_b);
+    // log::info!("bins_a={:?}", bins_a);
+    // log::info!("bins_b={:?}", bins_b);
     // Percentiles (cummulative bins summing up to 1.0) of the current allele and its additive inverse representing the rest of the alleles
     let mut percs_a: Array1<f64> = bins_a.clone();
     let mut percs_b: Array1<f64> = bins_b.clone();
@@ -266,8 +266,8 @@ fn prepare_freqs_and_qprime(
         percs_a[i] = bins_a.slice(s![0..(i + 1)]).sum();
         percs_b[i] = bins_b.slice(s![0..(i + 1)]).sum();
     }
-    // println!("percs_a={:?}", percs_a);
-    // println!("percs_b={:?}", percs_b);
+    // log::info!("percs_a={:?}", percs_a);
+    // log::info!("percs_b={:?}", percs_b);
     // Percentiles of the current allele and its additive inverse for modelling their distrbutions across pools
     let mut percs_a0: Array1<f64> = Array1::zeros(n);
     let mut percs_b0: Array1<f64> = Array1::zeros(n);
@@ -431,7 +431,7 @@ mod tests {
             matrix: counts,
         };
         let mut locus_counts_and_phenotypes = LocusCountsAndPhenotypes {
-            locus_counts: locus_counts,
+            locus_counts,
             phenotypes: gwalpha_fmt.clone(),
             pool_names: vec!["pool1", "pool2", "pool3", "pool4", "pool5"]
                 .into_iter()

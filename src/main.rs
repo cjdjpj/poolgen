@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use std::io::Write;
 use env_logger::{Builder, Env};
 use log;
-use base::{GeneralArgs, PhenotypeArgs, FilterArgs, WindowArgs, prepare_phen, prepare_filterstats, parse_valid_freq};
+use base::{GeneralArgs, PhenotypeArgs, FilterArgs, WindowArgs, GenericError, prepare_phen, prepare_filterstats, parse_valid_freq};
 use ndarray::prelude::*;
 use std::io;
 mod base;
@@ -284,7 +284,7 @@ struct Cli {
     utility: Utility,
 }
 
-fn main() {
+fn tool() -> Result<(), GenericError> {
     Builder::from_env(Env::default().default_filter_or("info"))
     .format(|buf, record| {
         let mut level_style = buf.style();
@@ -295,9 +295,7 @@ fn main() {
             log::Level::Debug => env_logger::fmt::Color::Blue,
             log::Level::Trace => env_logger::fmt::Color::Magenta,
         });
-
         let target = record.target().split("::").next().unwrap_or(record.target());
-
         writeln!(
             buf,
             "[{} {}] {}",
@@ -312,7 +310,7 @@ fn main() {
     match cli.utility {
         Utility::Pileup2Sync { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_pileup = base::FilePileup {
                 filename: general_args.fname.clone(),
@@ -324,13 +322,12 @@ fn main() {
                     &general_args.output,
                     &general_args.n_threads,
                     base::pileup_to_sync,
-                )
-                .unwrap();
+                )?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::Vcf2Sync { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_vcf = base::FileVcf {
                 filename: general_args.fname.clone(),
@@ -341,19 +338,18 @@ fn main() {
                     &general_args.output,
                     &general_args.n_threads,
                     base::vcf_to_sync,
-                )
-                .unwrap();
+                )?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::Sync2Csv { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "sync2csv".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let result = file_sync_phen
                 .write_csv(
                     &filter_stats,
@@ -361,12 +357,12 @@ fn main() {
                     &general_args.output,
                     &general_args.n_threads,
                 )
-                .unwrap();
+                ?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::FisherExactTest { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
@@ -377,13 +373,12 @@ fn main() {
                     &filter_stats, 
                     &general_args.output, 
                     &general_args.n_threads, 
-                    tables::fisher)
-                .unwrap();
+                    tables::fisher)?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::ChisqTest { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
@@ -394,46 +389,43 @@ fn main() {
                     &filter_stats, 
                     &general_args.output, 
                     &general_args.n_threads, 
-                    tables::chisq)
-                .unwrap();
+                    tables::chisq)?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::PearsonCorr { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "pearson_corr".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     gwas::correlation,
-                )
-                .unwrap();
+                )?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::OlsIter { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "ols_iter".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     gwas::ols_iterate,
-                )
-                .unwrap();
+                )?;
             log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
@@ -450,23 +442,22 @@ fn main() {
         }
         Utility::OlsIterWithKinship { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only, xxt_eigen_variance_explained } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "ols_iter_with_kinship".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let mut genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                .unwrap();
+                ?;
             let result = ols_with_covariate(
                 &mut genotypes_and_phenotypes,
                 xxt_eigen_variance_explained,
                 &general_args.fname,
                 &general_args.output,
-            )
-            .unwrap();
+            )?;
             log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
@@ -483,13 +474,13 @@ fn main() {
         }
         Utility::MleIter { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only} => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "mle_iter".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
@@ -497,7 +488,7 @@ fn main() {
                     &general_args.n_threads,
                     gwas::mle_iterate,
                 )
-                .unwrap();
+                ?;
             log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
@@ -514,23 +505,23 @@ fn main() {
         }
         Utility::MleIterWithKinship { general_args, phenotype_args, filter_args, generate_plots, fname_gff, window_size_gff, output_sig_snps_only, xxt_eigen_variance_explained } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "mle_iter_with_kinship".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let mut genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                .unwrap();
+                ?;
             let result = mle_with_covariate(
                 &mut genotypes_and_phenotypes,
                 xxt_eigen_variance_explained,
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap();
+            ?;
             log::info!("FILE CREATED: {}", result);
 
             if generate_plots {
@@ -547,13 +538,13 @@ fn main() {
         }
         Utility::Gwalpha { general_args, phenotype_args, filter_args, gwalpha_method } => {
             let file_phen = prepare_phen(&phenotype_args, "gwalpha_fmt".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "gwalpha".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             if gwalpha_method == "LS".to_owned() {
                 let result = file_sync_phen
                     .read_analyse_write(
@@ -562,7 +553,7 @@ fn main() {
                         &general_args.n_threads,
                         gwas::gwalpha_ls,
                     )
-                    .unwrap();
+                    ?;
                 log::info!("FILE CREATED: {}", result);
             } else {
                 let result = file_sync_phen
@@ -572,22 +563,22 @@ fn main() {
                         &general_args.n_threads,
                         gwas::gwalpha_ml,
                     )
-                    .unwrap();
+                    ?;
                 log::info!("FILE CREATED: {}", result);
             }
         }
         Utility::GenomicPredictionCrossValidation { general_args, phenotype_args, filter_args, n_reps, k_folds} => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "genomic_prediction_cross_validation".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                .unwrap();
+                ?;
             let functions: Vec<
                 fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>,
             > = vec![
@@ -600,7 +591,7 @@ fn main() {
             ];
             let prediction_performances = genotypes_and_phenotypes
                 .cross_validate(k_folds, n_reps, functions.clone())
-                .unwrap();
+                ?;
             let (tabulated, _pred_v_expe, predictor_files) = genotypes_and_phenotypes
                 .tabulate_predict_and_output(
                     &prediction_performances,
@@ -608,22 +599,22 @@ fn main() {
                     &general_args.fname,
                     &general_args.output,
                 )
-                .unwrap();
+                ?;
             log::info!("Predictors for each model are here:\n-{}", &predictor_files.join("\n-")[..]);
             log::info!("FILE CREATED: {}", &tabulated);
         }
         Utility::Fst { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "fst".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                .unwrap();
+                ?;
             let (genome_wide, per_window) = fst(
                 &genotypes_and_phenotypes,
                 &window.window_size_bp,
@@ -632,21 +623,21 @@ fn main() {
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap();
+            ?;
             log::info!("FILE CREATED: {}", genome_wide + " and " + &per_window[..]);
         }
         Utility::Heterozygosity { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "heterozygosity".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
-                .unwrap();
+                ?;
             let result = pi(
                 &genotypes_and_phenotypes,
                 &window.window_size_bp,
@@ -655,21 +646,21 @@ fn main() {
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap();
+            ?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::WattersonEstimator { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "watterson_estimator".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
-                .unwrap();
+                ?;
             let result = watterson_estimator(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
@@ -679,21 +670,21 @@ fn main() {
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap();
+            ?;
             log::info!("FILE CREATED: {}", result);
         }
         Utility::TajimaD { general_args, phenotype_args, filter_args, window } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
-            let phen = file_phen.lparse().unwrap();
+            let phen = file_phen.lparse()?;
             let filter_stats = prepare_filterstats(&filter_args, &phen);
             let file_sync = base::FileSync {
                 filename: general_args.fname.clone(),
                 test: "tajima_d".to_string()
             };
-            let file_sync_phen = *(file_sync, file_phen).lparse().unwrap();
+            let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
                 .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
-                .unwrap();
+                ?;
             let result =  tajima_d(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
@@ -703,9 +694,17 @@ fn main() {
                 &general_args.fname,
                 &general_args.output,
             )
-            .unwrap();
+            ?;
             log::info!("FILE CREATED: {}", result);
         }
     }
+    Ok(())
 }
 
+
+fn main() {
+    if let Err(e) = tool() {
+        log::error!("{}", e);
+        std::process::exit(1);
+    }
+}

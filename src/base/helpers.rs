@@ -45,7 +45,7 @@ pub fn run_python(result: &str, script_name: &str, extra_args: &[String]) {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        log::error!("WARNING: {} failed:\n{}", script_name, stderr);
+        log::warn!("{} failed:\n{}", script_name, stderr);
     } else {
         let stdout = String::from_utf8_lossy(&output.stdout);
         log::info!("{}", stdout);
@@ -330,9 +330,9 @@ pub fn define_sliding_windows(
     while i < l {
         let chr = loci_chr[i].to_owned();
         let pos = loci_pos[i];
-        // println!("i={:?}", i);
-        // println!("idx_head={:?}", idx_head);
-        // println!("idx_tail={:?}", idx_tail);
+        // log::info!("i={:?}", i);
+        // log::info!("idx_head={:?}", idx_head);
+        // log::info!("idx_tail={:?}", idx_tail);
         // Did we reach the end of the chromosome or the end of the window according to window size?
         if (&chr != chr_head.last().unwrap()) | (pos > (pos_head.last().unwrap() + window_size_bp))
         {
@@ -394,22 +394,22 @@ pub fn define_sliding_windows(
     let mut out_idx_head: Vec<usize> = vec![idx_head[0]];
     let mut out_idx_tail: Vec<usize> = vec![idx_tail[0]];
     for i in 1..n {
-        // println!("out_idx_tail={:?}", out_idx_tail);
+        // log::info!("out_idx_tail={:?}", out_idx_tail);
         if &idx_tail[i] != out_idx_tail.last().unwrap() {
             out_idx_head.push(idx_head[i]);
             out_idx_tail.push(idx_tail[i]);
         }
     }
-    // println!("#################################");
-    // println!("loci_chr={:?}", loci_chr);
-    // println!("loci_pos={:?}", loci_pos);
-    // println!("window_size_bp={:?}", window_size_bp);
-    // println!("min_loci_per_window={:?}", min_loci_per_window);
-    // println!("cov={:?}", cov);
-    // println!("idx_head={:?}", idx_head);
-    // println!("idx_tail={:?}", idx_tail);
-    // println!("out_idx_head={:?}", out_idx_head);
-    // println!("out_idx_tail={:?}", out_idx_tail);
+    // log::info!("#################################");
+    // log::info!("loci_chr={:?}", loci_chr);
+    // log::info!("loci_pos={:?}", loci_pos);
+    // log::info!("window_size_bp={:?}", window_size_bp);
+    // log::info!("min_loci_per_window={:?}", min_loci_per_window);
+    // log::info!("cov={:?}", cov);
+    // log::info!("idx_head={:?}", idx_head);
+    // log::info!("idx_tail={:?}", idx_tail);
+    // log::info!("out_idx_head={:?}", out_idx_head);
+    // log::info!("out_idx_tail={:?}", out_idx_tail);
     Ok((out_idx_head, out_idx_tail))
 }
 
@@ -568,8 +568,8 @@ mod tests {
             &min_loci_per_window,
         )
         .unwrap();
-        println!("windows_idx_head={:?}", windows_idx_head);
-        println!("windows_idx_tail={:?}", windows_idx_tail);
+        log::info!("windows_idx_head={:?}", windows_idx_head);
+        log::info!("windows_idx_tail={:?}", windows_idx_tail);
         assert_eq!(windows_idx_head, vec![0, 1, 4, 7, 8]); // filtered out window start:2-end:3 which is a complete subset of window start:1-end:3
         assert_eq!(windows_idx_tail, vec![2, 3, 6, 7, 8]); // filtered out window start:2-end:3 which is a complete subset of window start:1-end:3
                                                            // Define sliding windows (redundant loci, i.e. per allele per locus)
@@ -589,8 +589,8 @@ mod tests {
             &min_loci_per_window,
         )
         .unwrap();
-        println!("windows_idx_head={:?}", windows_idx_head);
-        println!("windows_idx_tail={:?}", windows_idx_tail);
+        log::info!("windows_idx_head={:?}", windows_idx_head);
+        log::info!("windows_idx_tail={:?}", windows_idx_tail);
         assert_eq!(windows_idx_head, vec![0, 3]); // filtered out window start:2-end:3 which is a complete subset of window start:1-end:3
         assert_eq!(windows_idx_tail, vec![2, 4]); // filtered out window start:2-end:3 which is a complete subset of window start:1-end:3
         let array1d: Array1<f64> = Array1::from_vec(vec![0.1, 0.2, 0.3, f64::NAN, 0.5]);
@@ -599,7 +599,7 @@ mod tests {
             Array2::from_shape_vec((2, 5), (0..10).map(|x| x as f64).collect::<Vec<f64>>())
                 .unwrap();
         array2d[(0, 0)] = f64::NAN;
-        println!("array2d={:?}", array2d);
+        log::info!("array2d={:?}", array2d);
         assert_eq!(
             Array1::from_shape_vec(5, vec![5.0, 3.5, 4.5, 5.5, 6.5]).unwrap(),
             mean_axis_ignore_nan(&array2d, 0).unwrap()
@@ -623,9 +623,9 @@ mod tests {
             &6,
         )
         .unwrap();
-        println!("row_labels={:?}", row_labels);
-        println!("column_labels={:?}", column_labels);
-        println!("data={:?}", data);
+        log::info!("row_labels={:?}", row_labels);
+        log::info!("column_labels={:?}", column_labels);
+        log::info!("data={:?}", data);
         assert_eq!(row_labels.len(), 5);
         assert_eq!(column_labels.len(), 4);
         assert_eq!(data[0], vec![0.1, 83.2, 0.2, 0.0]);

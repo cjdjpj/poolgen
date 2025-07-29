@@ -20,7 +20,7 @@ impl
         let mut s = (n as f64 / k as f64).floor() as usize;
         while s < 10 {
             if n < 20 {
-                println!("Warning: number of pools is less than 20, so we're using k=2.");
+                log::info!("Warning: number of pools is less than 20, so we're using k=2.");
                 k = 2;
                 s = (n as f64 / k as f64).floor() as usize;
                 break;
@@ -109,7 +109,7 @@ impl
         functions: Vec<
             fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>,
         >,
-    ) -> io::Result<PredictionPerformance>
+    ) -> Result<PredictionPerformance, GenericError>
     where
         fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>:
             Fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>,
@@ -134,7 +134,7 @@ impl
         let idx_cols: Vec<usize> = (0..p).collect::<Vec<usize>>();
         for rep in 0..r {
             let (groupings, k, s) = self.k_split(k).unwrap();
-            println!("groupings={:?}; k={:?}; s={:?}", groupings, k, s);
+            log::info!("groupings={:?}; k={:?}; s={:?}", groupings, k, s);
             for fold in 0..k {
                 let idx_validation: Vec<usize> = groupings
                     .iter()
@@ -149,8 +149,8 @@ impl
                     .filter(|(_, x)| *x != &fold)
                     .map(|(i, _)| i)
                     .collect();
-                // println!("idx_validation={:?}", idx_validation);
-                // println!("idx_training={:?}", idx_training);
+                // log::info!("idx_validation={:?}", idx_validation);
+                // log::info!("idx_training={:?}", idx_training);
 
                 let y_validation: Array2<f64> = stack(
                     Axis(0),
@@ -170,7 +170,7 @@ impl
                         &idx_training,
                     )
                     .unwrap();
-                    // println!("b_hat={:?}", b_hat);
+                    // log::info!("b_hat={:?}", b_hat);
                     let y_pred: Array2<f64> = multiply_views_xx(
                         &self.intercept_and_allele_frequencies,
                         &b_hat,
@@ -231,7 +231,7 @@ impl
         >,
         fname_input: &String,
         fname_output: &String,
-    ) -> io::Result<(String, String, Vec<String>)>
+    ) -> Result<(String, String, Vec<String>), GenericError>
     where
         fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>:
             Fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>,
@@ -549,11 +549,11 @@ mod tests {
             .unwrap()
             .mean_axis(Axis(0))
             .unwrap();
-        println!("cor.column_mean()={:?}", mean_cor);
-        println!("rmse.column_mean()={:?}", mean_rmse);
-        println!("n={:?}", f.nrows());
-        println!("p={:?}", f.ncols());
-        println!("q={:?}", q);
+        log::info!("cor.column_mean()={:?}", mean_cor);
+        log::info!("rmse.column_mean()={:?}", mean_rmse);
+        log::info!("n={:?}", f.nrows());
+        log::info!("p={:?}", f.ncols());
+        log::info!("q={:?}", q);
         // Assertions
         // assert_eq!(0, 1);
         assert_eq!(mean_cor[(3, 0)].round(), 1.0);
@@ -567,8 +567,8 @@ mod tests {
                 &"".to_owned(),
             )
             .unwrap();
-        println!("tabulated={}", tabulated);
-        println!("pred_v_expe={}", pred_v_expe);
-        println!("predictor_files={:?}", predictor_files);
+        log::info!("tabulated={}", tabulated);
+        log::info!("pred_v_expe={}", pred_v_expe);
+        log::info!("predictor_files={:?}", predictor_files);
     }
 }

@@ -186,7 +186,7 @@ impl Regression for UnivariateMaximumLikelihoodEstimation {
                 self.pval[i] = 2.00 * (1.00 - d.cdf(self.t[i].abs()));
             }
         }
-        // println!("MLE: {:?}", self);
+        // log::info!("MLE: {:?}", self);
         Ok(self)
     }
 }
@@ -195,13 +195,13 @@ fn mle(
     x_matrix: &Array2<f64>,
     y_matrix: &Array2<f64>,
     remove_collinearities: bool,
-) -> io::Result<(Array2<f64>, Array2<f64>, Array2<f64>)> {
+) -> Result<(Array2<f64>, Array2<f64>, Array2<f64>), GenericError> {
     let n = x_matrix.nrows();
     let mut p = x_matrix.ncols();
     let n_ = y_matrix.nrows();
     let k = y_matrix.ncols();
     if n != n_ {
-        return Err(Error::new(ErrorKind::Other, "The number of samples in the dependent and independent variables are not the same size."));
+        return Err(GenericError::Fatal("The number of samples in the dependent and independent variables are not the same size.".to_string()));
     }
     let mut beta = Array2::zeros((p, k));
     let mut var_beta = Array2::zeros((p, k));
@@ -217,7 +217,7 @@ fn mle(
         }
         match mle_regression.estimate_significance() {
             Ok(x) => x,
-            Err(_) => return Err(Error::new(ErrorKind::Other, "Regression failed.")),
+            Err(_) => return Err(GenericError::Fatal("Regression failed.".to_string())),
         };
         p = mle_regression.x.ncols();
         for i in 0..p {
@@ -309,7 +309,7 @@ pub fn mle_with_covariate(
     xxt_eigen_variance_explained: f64,
     fname_input: &String,
     fname_output: &String,
-) -> io::Result<String> {
+) -> Result<String, GenericError> {
     // Check that a output file can be created, but don't create it.
     let _ = std::fs::OpenOptions::new().write(true).create_new(true).open(&fname_output).map(|_| std::fs::remove_file(&fname_output)).expect("Cannot write to output file");
     // Check struct
@@ -363,9 +363,9 @@ pub fn mle_with_covariate(
     )
     .unwrap();
 
-    println!("allele_idx={:?}", allele_idx);
-    println!("phenotype_idx={:?}", phenotype_idx);
-    println!("covariate={:?}", covariate);
+    log::info!("allele_idx={:?}", allele_idx);
+    log::info!("phenotype_idx={:?}", phenotype_idx);
+    log::info!("covariate={:?}", covariate);
     // Parallel OLS
     Zip::from(&mut beta)
         .and(&mut varb)
@@ -399,10 +399,10 @@ pub fn mle_with_covariate(
             *significance = pval_[(n_eigenvecs + 1, 0)];
         });
 
-    println!("y={:?}", y);
-    println!("g={:?}", g);
-    println!("beta={:?}", beta);
-    println!("pval={:?}", pval);
+    log::info!("y={:?}", y);
+    log::info!("g={:?}", g);
+    log::info!("beta={:?}", beta);
+    log::info!("pval={:?}", pval);
 
     // Write output
     let mut fname_output = fname_output.to_owned();
