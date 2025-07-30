@@ -82,4 +82,4 @@ for gwas_key in gwas_phenotypes:
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
 
 output_paths = output_paths[:-1]
-print("FILE CREATED: " + output_paths, end="")
+print("File created: " + output_paths, end="")

@@ -2,7 +2,7 @@
 use crate::base::*;
 use ndarray::prelude::*;
 use std::fs::{File, OpenOptions};
-use std::io::{self, prelude::*, BufReader, BufWriter, Error, ErrorKind, SeekFrom};
+use std::io::{self, prelude::*, BufReader, BufWriter, SeekFrom};
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -344,7 +344,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             .create_new(true)
             .open(&out)
             .and_then(|_| std::fs::remove_file(&out))
-            .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
+            .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &out, e)))?;
         // Find the pool names from the last header line of the vcf file
         let file = File::open(fname.clone()).unwrap();
         let reader = BufReader::new(file);

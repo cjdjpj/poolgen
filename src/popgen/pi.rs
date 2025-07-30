@@ -1,7 +1,7 @@
 use crate::base::*;
 use ndarray::{prelude::*, Zip};
 use std::fs::OpenOptions;
-use std::io::{self, prelude::*};
+use std::io::prelude::*;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -113,8 +113,12 @@ pub fn pi(
     )?;
     let n = pi_per_pool_per_window.ncols();
     let n_windows = pi_per_pool_per_window.nrows();
-    assert!(n_windows==windows_idx_head.len(), "Please check the number of windows in the pi estimates and the starting indices of each window.");
-    assert!(n_windows==windows_idx_tail.len(), "Please check the number of windows in the pi estimates and the ending indices of each window.");
+    if n_windows != windows_idx_head.len() {
+        return Err(GenericError::Fatal( "Please check the number of windows in the pi estimates and the starting indices of each window.".to_string()))
+    }
+    if n_windows != windows_idx_tail.len() {
+        return Err(GenericError::Fatal( "Please check the number of windows in the pi estimates and the ending indices of each window.".to_string()))
+    }
     let vec_pi_across_windows = pi_per_pool_per_window.mean_axis(Axis(0)).unwrap();
     // Write output
     let mut fname_output = fname_output.to_owned();
@@ -152,7 +156,7 @@ pub fn pi(
         .write(true)
         .append(false)
         .open(&fname_output)
-        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     log::info!("File created: {}", &fname_output);
     // Header
     let mut line: Vec<String> = vec!["Pool".to_owned(), "Mean_across_windows".to_owned()];

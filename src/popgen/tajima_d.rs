@@ -2,7 +2,7 @@ use crate::base::*;
 use crate::popgen::*;
 use ndarray::prelude::*;
 use std::fs::OpenOptions;
-use std::io::{self, prelude::*};
+use std::io::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Tajima's D see: [Feretti et al. (2013)](https://onlinelibrary.wiley.com/doi/10.1111/mec.12522) for details.
@@ -41,10 +41,18 @@ pub fn tajima_d(
     // log::info!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
     // log::info!("pi_per_pool_per_window={:?}", pi_per_pool_per_window);
     // Sanity checks
-    assert_eq!(n_pools, pi_per_pool_per_window.ncols(), "The number of pools extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.");
-    assert_eq!(n_windows, pi_per_pool_per_window.nrows(), "The number of windows extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.");
-    assert_eq!(windows_idx_head, windows_idx_head_pi, "The chromosome names per window extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.");
-    assert_eq!(windows_idx_tail, windows_idx_tail_pi, "The SNP positions per window extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.");
+    if n_pools != pi_per_pool_per_window.ncols() {
+        return Err(GenericError::Fatal("The number of pools extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.".to_string()))
+    }
+    if n_windows != pi_per_pool_per_window.nrows() {
+        return Err(GenericError::Fatal("The number of windows extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.".to_string()))
+    }
+    if windows_idx_head != windows_idx_head_pi {
+        return Err(GenericError::Fatal("The chromosome names per window extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.".to_string()))
+    }
+    if windows_idx_tail != windows_idx_tail_pi {
+        return Err(GenericError::Fatal("The SNP positions per window extracted from estimating the heterozygosities and Watterson's estimators are incompatible. Please report a bug.".to_string()))
+    }
     // Calculate Tajima's D
     let mut tajimas_d_per_pool_per_window: Array2<f64> =
         Array2::from_elem((n_windows, n_pools), f64::NAN);
@@ -132,7 +140,7 @@ pub fn tajima_d(
         .write(true)
         .append(false)
         .open(&fname_output)
-        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     log::info!("File created: {}", &fname_output);
     // Header
     let mut line: Vec<String> = vec!["Pool".to_owned(), "Mean_across_windows".to_owned()];

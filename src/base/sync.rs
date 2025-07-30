@@ -136,12 +136,22 @@ impl Parse<LocusCounts> for String {
             .collect::<Vec<String>>();
         // Read the allele counts into the counts matrix
         let mut matrix: Array2<u64> = Array2::from_elem((n, p), 0);
-        let mut counts: Vec<u64>;
         for i in 0..n {
-            counts = vec_line[i+3].split(":")
-                                .map(|x| x.to_string().parse::<u64>().expect("Please check the input sync file as the allele counts are not valid integers."))
-                                .collect::<Vec<u64>>();
-            assert_eq!(counts.len(), p, "Please check the input sync file, allele counts not in sync format (A:T:C:G:N:D)");
+            let counts = vec_line[i + 3]
+                .split(":")
+                .map(|x| {
+                    x.to_string().parse::<u64>().map_err(|_| {
+                        GenericError::Fatal(
+                            "Cannot convert pileup line into allele frequencies.".to_string()
+                        )
+                    })
+                })
+                .collect::<Result<Vec<u64>, GenericError>>()?;
+            if counts.len() != p {
+                return Err(GenericError::Fatal(
+                    "Please check the input sync file, allele counts not in sync format (A:T:C:G:N:D)".to_string()
+                ));
+            }
             for j in 0..p {
                 matrix[(i, j)] = counts[j];
             }
@@ -399,7 +409,7 @@ impl Filter for LocusFrequencies {
             Ok(x) => x,
             Err(_) => {
                 return Err(GenericError::Fatal(
-                    "T_T Cannot convert locus counts to locus frequencies.".to_string()
+                    "Cannot convert locus counts to locus frequencies.".to_string()
                 ))
             }
         };
@@ -623,9 +633,7 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
         // Output temp file for the chunk
         let fname_out = fname.to_owned() + "-" + &start_string + "-" + &end_string + ".tmp";
         let out = fname_out.clone();
-        let error_writing_file = "T_T Unable to create file: ".to_owned() + &fname_out;
-        let error_writing_line = "T_T Unable to write line into file: ".to_owned() + &fname_out;
-        let file_out = File::create(fname_out).expect(&error_writing_file);
+        let file_out = File::create(&fname_out).map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &out, e)))?;
         let mut file_out = BufWriter::new(file_out);
         // Input file chunk
         let file = File::open(fname.clone()).unwrap();
@@ -634,6 +642,7 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
         let mut i: u64 = *start;
         reader.seek(SeekFrom::Start(*start)).unwrap();
         // Read and parse until the end of the chunk
+        let mut line_number = 0;
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
@@ -652,7 +661,7 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
                 Ok(parsed_line) => parsed_line,
                 Err(e) => match e {
                     GenericError::NonFatal(msg) => {
-                        log::warn!("Line {} ignored: {}", i, msg);
+                        log::warn!("Line {} ignored: {}", start+line_number, msg);
                         continue;
                     }
                     GenericError::Fatal(msg) => {
@@ -663,9 +672,10 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
             };
             // Write the line
             let _ = match function(&mut locus_counts, filter_stats) {
-                Some(x) => file_out.write_all(x.as_bytes()).expect(&error_writing_line),
+                Some(x) => file_out.write_all(x.as_bytes()).map_err(|e| GenericError::Fatal(format!("Unable to write line into {}: {}", &fname_out, e)))?,
                 None => continue,
             };
+            line_number += 1
         }
         Ok(out)
     }
@@ -709,7 +719,7 @@ impl ChunkyReadAnalyseWrite<LocusCounts, fn(&mut LocusCounts, &FilterStats) -> O
             .create_new(true)
             .open(&out)
             .and_then(|_| std::fs::remove_file(&out))
-            .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
+            .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &out, e)))?;
         // // Find the positions whereto split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
         let n_chunks = chunks.len();
@@ -809,9 +819,7 @@ impl
         // Output temp file for the chunk
         let fname_out = fname.to_owned() + "-" + &start_string + "-" + &end_string + ".tmp";
         let out = fname_out.clone();
-        let error_writing_file = "T_T Unable to create file: ".to_owned() + &fname_out;
-        let error_writing_line = "T_T Unable to write line into file: ".to_owned() + &fname_out;
-        let file_out = File::create(fname_out).expect(&error_writing_file);
+        let file_out = File::create(&fname_out).map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_out, e)))?;
         let mut file_out = BufWriter::new(file_out);
         // Input file chunk
         let file = File::open(fname.clone()).unwrap();
@@ -820,6 +828,7 @@ impl
         let mut i: u64 = *start;
         reader.seek(SeekFrom::Start(*start)).unwrap();
         // Read and parse until the end of the chunk
+        let mut line_number = 0;
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
@@ -840,7 +849,7 @@ impl
                 Ok(parsed_line) => parsed_line,
                 Err(e) => match e {
                     GenericError::NonFatal(msg) => {
-                        log::warn!("Line {} ignored: {}", i, msg);
+                        log::warn!("Line {} ignored: {}", line_number, msg);
                         continue;
                     }
                     GenericError::Fatal(msg) => {
@@ -856,9 +865,10 @@ impl
             };
             // Write the line
             let _ = match function(&mut locus_counts_and_phenotypes, filter_stats) {
-                Some(x) => file_out.write_all(x.as_bytes()).expect(&error_writing_line),
+                Some(x) => file_out.write_all(x.as_bytes()).map_err(|e| GenericError::Fatal(format!("Unable to write line into {}: {}", &fname_out, e)))?,
                 None => continue,
             };
+            line_number += 1
         }
         Ok(out)
     }
@@ -902,7 +912,7 @@ impl
             .create_new(true)
             .open(&out)
             .and_then(|_| std::fs::remove_file(&out))
-            .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
+            .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &out, e)))?;
         // // Find the positions whereto split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
         let outname_ndigits = chunks[*n_threads].to_string().len();
@@ -921,20 +931,22 @@ impl
             let outname_ndigits = outname_ndigits.clone();
             let filter_stats = filter_stats.clone();
             let thread_ouputs_clone = thread_ouputs.clone(); // Mutated within the current thread worker
-            let thread = std::thread::spawn(move || {
+            let thread = std::thread::spawn(move || -> Result<(), GenericError> {
                 let fname_out_per_thread = self_clone
-                    .per_chunk(&start, &end, &outname_ndigits, &filter_stats, function)
-                    .unwrap();
+                    .per_chunk(&start, &end, &outname_ndigits, &filter_stats, function)?;
+
                 thread_ouputs_clone
                     .lock()
                     .unwrap()
                     .push(fname_out_per_thread);
+                Ok(())
             });
             thread_objects.push(thread);
         }
         // Waiting for all threads to finish
         for thread in thread_objects {
-            let _ = thread.join().expect("Unknown thread error occured.");
+            thread.join()
+                .map_err(|_| GenericError::Fatal("Unknown thread error occurred.".to_string()))??;
         }
         // Instantiate output file
         let mut file_out = OpenOptions::new()
@@ -989,6 +1001,7 @@ impl LoadAll for FileSyncPhen {
         let mut i: u64 = *start;
         reader.seek(SeekFrom::Start(*start)).unwrap();
         // Read and parse until the end of the chunk
+        let mut line_number = 0;
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
@@ -1009,10 +1022,10 @@ impl LoadAll for FileSyncPhen {
                 Ok(parsed_line) => *parsed_line,
                 Err(e) => match e {
                     GenericError::NonFatal(msg) => {
-                        log::warn!("Line {} ignored: {}", i, msg);
+                        log::warn!("Line {} ignored: {}", line_number, msg);
                         continue;
                     }
-                    GenericError::Fatal(msg) => {
+                    GenericError::Fatal(_msg) => {
                         std::process::exit(1);
                     }
                 },
@@ -1033,6 +1046,8 @@ impl LoadAll for FileSyncPhen {
             }
             freq.push(locus_frequencies);
             cnts.push(locus_counts);
+
+            line_number += 1
         }
         Ok((freq, cnts))
     }
@@ -1217,7 +1232,7 @@ impl SaveCsv for FileSyncPhen {
             .create_new(true)
             .open(&out)
             .and_then(|_| std::fs::remove_file(&out))
-            .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
+            .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &out, e)))?;
         // Load the full sync file in parallel and sort
         let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).unwrap();
         // Make sure that we have the same number of pools in the genotype and phenotype files

@@ -281,13 +281,38 @@ pub fn ols_with_covariate(
     fname_input: &String,
     fname_output: &String,
 ) -> Result<String, GenericError> {
+    let mut fname_output = fname_output.to_owned();
+    if fname_output == "".to_owned() {
+        let time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+        let bname = fname_input
+            .split(".")
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .map(|a| a.to_owned())
+            .collect::<Vec<String>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<String>>()[1..]
+            .to_owned()
+            .into_iter()
+            .rev()
+            .collect::<Vec<String>>()
+            .join(".");
+        fname_output = bname.to_owned()
+            + "-ols_iter_with_kinship-"
+            + &time.to_string()
+            + ".csv";
+    }
     // Check that a output file can be created, but don't create it.
     let _ = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&fname_output)
         .and_then(|_| std::fs::remove_file(&fname_output))
-        .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     // Remove pools with missing phenotype information
     genotypes_and_phenotypes.remove_missing().unwrap();
     // Check struct
@@ -375,44 +400,17 @@ pub fn ols_with_covariate(
         });
 
     // Write output
-    let mut fname_output = fname_output.to_owned();
-    if fname_output == "".to_owned() {
-        let time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs_f64();
-        let bname = fname_input
-            .split(".")
-            .collect::<Vec<&str>>()
-            .into_iter()
-            .map(|a| a.to_owned())
-            .collect::<Vec<String>>()
-            .into_iter()
-            .rev()
-            .collect::<Vec<String>>()[1..]
-            .to_owned()
-            .into_iter()
-            .rev()
-            .collect::<Vec<String>>()
-            .join(".");
-        fname_output = bname.to_owned()
-            + "-ols_iterative_xxt_"
-            + &(n_eigenvecs + 1).to_string()
-            + "_eigens-"
-            + &time.to_string()
-            + ".csv";
-    }
     // Instatiate output file
-    let error_writing_file = "Unable to create file: ".to_owned() + &fname_output;
     let mut file_out = OpenOptions::new()
         .create_new(true)
         .write(true)
         .append(false)
         .open(&fname_output)
-        .expect(&error_writing_file);
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     file_out
         .write_all(("#chr,pos,alleles,phenotype,statistic,pvalue\n").as_bytes())
         .unwrap();
+    log::info!("File created: {}", &fname_output);
     for j in 0..k {
         for i in 0..p {
             let beta_ = match beta[(i, j)].is_nan() {

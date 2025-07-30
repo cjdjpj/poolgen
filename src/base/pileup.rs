@@ -3,7 +3,7 @@
 use crate::base::*;
 use ndarray::prelude::*;
 use std::fs::{File, OpenOptions};
-use std::io::{self, prelude::*, BufReader, BufWriter, Error, ErrorKind, SeekFrom};
+use std::io::{self, prelude::*, BufReader, BufWriter, SeekFrom};
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -406,9 +406,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
         // Output temp file for the chunk
         let fname_out = fname.to_owned() + "-" + &start_string + "-" + &end_string + ".sync.tmp";
         let out = fname_out.clone();
-        let error_writing_file = "Unable to create file: ".to_owned() + &fname_out;
-        let error_writing_line = "Unable to write line into file: ".to_owned() + &fname_out;
-        let file_out = File::create(fname_out).expect(&error_writing_file);
+        let file_out = File::create(&fname_out).map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_out, e)))?;
         let mut file_out = BufWriter::new(file_out);
         // Input file chunk
         let file = File::open(fname.clone()).unwrap();
@@ -417,6 +415,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
         let mut i: u64 = *start;
         reader.seek(SeekFrom::Start(*start)).unwrap();
         // Read and parse until the end of the chunk
+        let mut line_number = 0;
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
@@ -436,7 +435,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
                 Ok(parsed_line) => parsed_line,
                 Err(e) => match e {
                     GenericError::NonFatal(msg) => {
-                        log::warn!("Line {} ignored: {}", i, msg);
+                        log::warn!("Line {} ignored: {}", start+line_number, msg);
                         continue;
                     }
                     GenericError::Fatal(msg) => {
@@ -448,9 +447,10 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
 
             // Write the line
             let _ = match function(&mut pileup_line, filter_stats) {
-                Some(x) => file_out.write_all(x.as_bytes()).expect(&error_writing_line),
+                Some(x) => file_out.write_all(x.as_bytes()).map_err(|e| GenericError::Fatal(format!("Unable to write line into {}: {}", &fname_out, e)))?,
                 None => continue,
             };
+            line_number += 1;
         }
         Ok(out)
     }
@@ -495,7 +495,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
             .create_new(true)
             .open(&out)
             .and_then(|_| std::fs::remove_file(&out))
-            .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
+            .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &out, e)))?;
         // Pool names
         let names = self.pool_names.join("\t");
         // // Find the positions whereto split the file into n_threads pieces
@@ -534,7 +534,7 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
                 Ok(Err(e)) => {
                     return Err(e);
                 }
-                Err(e) => {
+                Err(_e) => {
                     return Err(GenericError::Fatal("Thread failed in way".to_string()));
                 }
             }
@@ -545,7 +545,8 @@ impl ChunkyReadAnalyseWrite<PileupLine, fn(&mut PileupLine, &FilterStats) -> Opt
             .write(true)
             .append(false)
             .open(&out)
-            .map_err(|e| GenericError::Fatal(format!("Unable to create file: {}", &out)))?;
+            .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &out, e)))?;
+        log::info!("File created: {}", &out);
         // Write out
         file_out
             .write_all(("#chr\tpos\tref\t".to_owned() + &names + "\n").as_bytes())

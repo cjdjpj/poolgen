@@ -7,7 +7,7 @@ use ndarray_linalg::svd::*;
 use log;
 
 use std::fs::{self, File};
-use std::io::{self, prelude::*, BufReader, SeekFrom, Error, ErrorKind};
+use std::io::{self, prelude::*, BufReader, SeekFrom};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -82,10 +82,10 @@ pub fn prepare_filterstats(filter_args: &FilterArgs, phen: &Box<Phen>) -> Filter
 }
 
 /// Detect the cursor positions across the input file corresponding to the splits for parallel computation
-pub fn find_file_splits(fname: &String, n_threads: &usize) -> io::Result<Vec<u64>> {
+pub fn find_file_splits(fname: &String, n_threads: &usize) -> Result<Vec<u64>, GenericError> {
     let mut file = match File::open(fname) {
         Ok(x) => x,
-        Err(_) => return Err(Error::new(ErrorKind::Other, "The input file: ".to_owned() + fname + " does not exist. Please make sure you are entering the correct filename and/or the correct path.")),
+        Err(_) => return Err(GenericError::Fatal(format!("The input file: {} does not exist. Please make sure you are entering the correct filename and/or the correct path.", &fname))),
     };
     let _ = file.seek(SeekFrom::End(0));
     let mut reader = BufReader::new(file);
@@ -166,13 +166,12 @@ pub fn multiply_views_xx(
     a_cols: &Vec<usize>,
     b_rows: &Vec<usize>,
     b_cols: &Vec<usize>,
-) -> io::Result<Array2<f64>> {
+) -> Result<Array2<f64>, GenericError> {
     let n = a_rows.len();
     let m = b_cols.len();
     if a_cols.len() != b_rows.len() {
-        return Err(Error::new(
-            ErrorKind::Other,
-            "The two matrices are incompatible.",
+        return Err(GenericError::Fatal(
+            "The two matrices are incompatible.".to_string(),
         ));
     }
     let mut out: Array2<f64> = Array2::zeros((n, m));
@@ -201,14 +200,13 @@ pub fn multiply_views_xtx(
     a_cols: &Vec<usize>,
     b_rows: &Vec<usize>,
     b_cols: &Vec<usize>,
-) -> io::Result<Array2<f64>> {
+) -> Result<Array2<f64>, GenericError> {
     let n = a_cols.len(); // reversed a
     let m = b_cols.len();
     if a_rows.len() != b_rows.len() {
         // reversed a
-        return Err(Error::new(
-            ErrorKind::Other,
-            "The two matrices are incompatible.",
+        return Err(GenericError::Fatal(
+            "The two matrices are incompatible.".to_string(),
         ));
     }
     let mut out: Array2<f64> = Array2::zeros((n, m));
@@ -237,14 +235,13 @@ pub fn multiply_views_xxt(
     a_cols: &Vec<usize>,
     b_rows: &Vec<usize>,
     b_cols: &Vec<usize>,
-) -> io::Result<Array2<f64>> {
+) -> Result<Array2<f64>, GenericError> {
     let n = a_rows.len();
     let m = b_rows.len(); // reversed b
     if a_cols.len() != b_cols.len() {
         // reversed b
-        return Err(Error::new(
-            ErrorKind::Other,
-            "The two matrices are incompatible.",
+        return Err(GenericError::Fatal(
+            "The two matrices are incompatible.".to_string(),
         ));
     }
     let mut out: Array2<f64> = Array2::zeros((n, m));
@@ -268,7 +265,7 @@ pub fn multiply_views_xxt(
 /// Calculate the mean of a 1D array ignoring NaN
 pub fn mean_array1_ignore_nan(
     x: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
-) -> io::Result<f64> {
+) -> Result<f64, GenericError> {
     let sum = x.fold(0.0, |sum, &a| if a.is_nan() { sum } else { sum + a });
     let counts = x.iter().filter(|&a| !a.is_nan()).count() as f64;
     Ok(sum / counts)
@@ -278,7 +275,7 @@ pub fn mean_array1_ignore_nan(
 pub fn mean_axis_ignore_nan<D>(
     a: &Array<f64, D>,
     axis: usize,
-) -> io::Result<Array<f64, <D>::Smaller>>
+) -> Result<Array<f64, <D>::Smaller>, GenericError>
 where
     D: ndarray::Dimension + ndarray::RemoveAxis,
 {
@@ -308,7 +305,7 @@ pub fn define_sliding_windows(
     window_size_bp: &u64,
     window_slide_size_bp: &u64,
     min_loci_per_window: &u64,
-) -> io::Result<(Vec<usize>, Vec<usize>)> {
+) -> Result<(Vec<usize>, Vec<usize>), GenericError> {
     assert_eq!(loci_chr.len(), loci_pos.len());
     let l = loci_chr.len();
     // Indices, chromosome names, and positions of the start and end of the window, respectively (will be filtered to remove redundant tails to remove windows which are complete subsets of a bigger window near the end of chromosomes or scaffolds)
@@ -420,7 +417,7 @@ pub fn load_table(
     idx_row_labels: &Vec<usize>,
     data_start_col: &usize,
     data_end_col: &usize,
-) -> io::Result<(Vec<String>, Vec<String>, Vec<Vec<f64>>)> {
+) -> Result<(Vec<String>, Vec<String>, Vec<Vec<f64>>), GenericError> {
     let file = File::open(fname).unwrap();
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
@@ -430,7 +427,7 @@ pub fn load_table(
             .split(delimiter.as_str())
             .map(|x| x.to_owned())
             .collect::<Vec<String>>(),
-        None => return Err(Error::new(ErrorKind::Other, "No lines found.")),
+        None => return Err(GenericError::Fatal("No lines found.".to_string())),
     };
     let data_end_col = if column_labels.len() < *data_end_col {
         column_labels.len()

@@ -277,7 +277,8 @@ enum Utility {
 #[clap(
     author = "Jeff Paril",
     version = "0.1.0",
-    about = "Quantitative and population genetics analyses using pool sequencing data."
+    about = "Quantitative and population genetics analyses using pool sequencing data.",
+    after_help = "See '\u{001b}[1mpoolgen help\u{001b}[0m <COMMAND>' for more information on a specific command."
 )]
 struct Cli {
     #[clap(subcommand)]
@@ -286,26 +287,27 @@ struct Cli {
 
 fn tool() -> Result<(), GenericError> {
     Builder::from_env(Env::default().default_filter_or("info"))
-    .format(|buf, record| {
-        let mut level_style = buf.style();
-        level_style.set_color(match record.level() {
-            log::Level::Error => env_logger::fmt::Color::Red,
-            log::Level::Warn  => env_logger::fmt::Color::Yellow,
-            log::Level::Info  => env_logger::fmt::Color::Green,
-            log::Level::Debug => env_logger::fmt::Color::Blue,
-            log::Level::Trace => env_logger::fmt::Color::Magenta,
-        });
-        let target = record.target().split("::").next().unwrap_or(record.target());
-        writeln!(
-            buf,
-            "[{} {}] {}",
-            level_style.value(record.level()),
-            target,
-            record.args()
-        )
-    })
-    .init();
+        .format(|buf, record| {
+            let mut level_style = buf.style();
+            level_style.set_color(match record.level() {
+                log::Level::Error => env_logger::fmt::Color::Red,
+                log::Level::Warn  => env_logger::fmt::Color::Yellow,
+                log::Level::Info  => env_logger::fmt::Color::Green,
+                log::Level::Debug => env_logger::fmt::Color::Blue,
+                log::Level::Trace => env_logger::fmt::Color::Magenta,
+            });
+            let target = record.target().split("::").next().unwrap_or(record.target());
+            writeln!(
+                buf,
+                "[{} {}] {}",
+                level_style.value(record.level()),
+                target,
+                record.args()
+            )
+        })
+        .init();
     let cli = Cli::parse();
+    let result;
 
     match cli.utility {
         Utility::Pileup2Sync { general_args, phenotype_args, filter_args } => {
@@ -316,13 +318,12 @@ fn tool() -> Result<(), GenericError> {
                 filename: general_args.fname.clone(),
                 pool_names: phen.pool_names,
             };
-            let result = file_pileup
-                .read_analyse_write(
-                    &filter_stats,
-                    &general_args.output,
-                    &general_args.n_threads,
-                    base::pileup_to_sync,
-                )?;
+            file_pileup.read_analyse_write(
+                &filter_stats,
+                &general_args.output,
+                &general_args.n_threads,
+                base::pileup_to_sync,
+            )?;
         }
         Utility::Vcf2Sync { general_args, phenotype_args, filter_args } => {
             let file_phen = prepare_phen(&phenotype_args, "default".to_string());
@@ -331,8 +332,7 @@ fn tool() -> Result<(), GenericError> {
             let file_vcf = base::FileVcf {
                 filename: general_args.fname.clone(),
             };
-            let result = file_vcf
-                .read_analyse_write(
+            file_vcf.read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
@@ -348,8 +348,7 @@ fn tool() -> Result<(), GenericError> {
                 test: "sync2csv".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
-            let result = file_sync_phen
-                .write_csv(
+            file_sync_phen.write_csv(
                     &filter_stats,
                     filter_args.keep_p_minus_1,
                     &general_args.output,
@@ -364,8 +363,7 @@ fn tool() -> Result<(), GenericError> {
                 filename: general_args.fname.clone(),
                 test: "fisher_exact_test".to_string()
             };
-            let result = file_sync
-                .read_analyse_write(
+            file_sync.read_analyse_write(
                     &filter_stats, 
                     &general_args.output, 
                     &general_args.n_threads, 
@@ -379,8 +377,7 @@ fn tool() -> Result<(), GenericError> {
                 filename: general_args.fname.clone(),
                 test: "chisq_test".to_string()
             };
-            let result = file_sync
-                .read_analyse_write(
+            file_sync.read_analyse_write(
                     &filter_stats, 
                     &general_args.output, 
                     &general_args.n_threads, 
@@ -395,8 +392,7 @@ fn tool() -> Result<(), GenericError> {
                 test: "pearson_corr".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
-            let result = file_sync_phen
-                .read_analyse_write(
+            file_sync_phen.read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
@@ -412,7 +408,7 @@ fn tool() -> Result<(), GenericError> {
                 test: "ols_iter".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
-            let result = file_sync_phen
+            result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
@@ -441,9 +437,8 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let mut genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                ?;
-            let result = ols_with_covariate(
+                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)?;
+            result = ols_with_covariate(
                 &mut genotypes_and_phenotypes,
                 xxt_eigen_variance_explained,
                 &general_args.fname,
@@ -470,15 +465,13 @@ fn tool() -> Result<(), GenericError> {
                 test: "mle_iter".to_string()
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
-            let result = file_sync_phen
+            result = file_sync_phen
                 .read_analyse_write(
                     &filter_stats,
                     &general_args.output,
                     &general_args.n_threads,
                     gwas::mle_iterate,
                 )?;
-            log::info!("FILE CREATED: {}", result);
-
             if generate_plots {
                 base::run_python(&result, "plot_manhattan.py", &[]);
                 base::run_python(&result, "plot_qq.py", &[]);
@@ -501,15 +494,13 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let mut genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                ?;
-            let result = mle_with_covariate(
+                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)?;
+            result = mle_with_covariate(
                 &mut genotypes_and_phenotypes,
                 xxt_eigen_variance_explained,
                 &general_args.fname,
                 &general_args.output,
             )?;
-
             if generate_plots {
                 base::run_python(&result, "plot_manhattan.py", &[]);
                 base::run_python(&result, "plot_qq.py", &[]);
@@ -532,8 +523,7 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             if gwalpha_method == "LS".to_owned() {
-                let result = file_sync_phen
-                    .read_analyse_write(
+                file_sync_phen.read_analyse_write(
                         &filter_stats,
                         &general_args.output,
                         &general_args.n_threads,
@@ -541,8 +531,7 @@ fn tool() -> Result<(), GenericError> {
                     )
                     ?;
             } else {
-                let result = file_sync_phen
-                    .read_analyse_write(
+                file_sync_phen.read_analyse_write(
                         &filter_stats,
                         &general_args.output,
                         &general_args.n_threads,
@@ -561,10 +550,9 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                ?;
+                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)?;
             let functions: Vec<
-                fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>,
+            fn(&Array2<f64>, &Array2<f64>, &Vec<usize>) -> io::Result<(Array2<f64>, String)>,
             > = vec![
                 ols,
                 penalise_glmnet,
@@ -575,8 +563,8 @@ fn tool() -> Result<(), GenericError> {
             ];
             let prediction_performances = genotypes_and_phenotypes
                 .cross_validate(k_folds, n_reps, functions.clone())
-                ?;
-            let (tabulated, _pred_v_expe, predictor_files) = genotypes_and_phenotypes
+            ?;
+            let (_tabulated, _pred_v_expe, predictor_files) = genotypes_and_phenotypes
                 .tabulate_predict_and_output(
                     &prediction_performances,
                     functions,
@@ -595,9 +583,8 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)
-                ?;
-            let (genome_wide, per_window) = fst(
+                .into_genotypes_and_phenotypes(&filter_stats, filter_args.keep_p_minus_1, &general_args.n_threads)?;
+            let (_genome_wide, _per_window) = fst(
                 &genotypes_and_phenotypes,
                 &window.window_size_bp,
                 &window.window_slide_size_bp,
@@ -616,9 +603,8 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
-                ?;
-            let result = pi(
+                .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)?;
+            pi(
                 &genotypes_and_phenotypes,
                 &window.window_size_bp,
                 &window.window_slide_size_bp,
@@ -638,9 +624,8 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
-                ?;
-            let result = watterson_estimator(
+                .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)?;
+            watterson_estimator(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
                 &window.window_size_bp,
@@ -660,9 +645,8 @@ fn tool() -> Result<(), GenericError> {
             };
             let file_sync_phen = *(file_sync, file_phen).lparse()?;
             let genotypes_and_phenotypes = file_sync_phen
-                .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)
-                ?;
-            let result = tajima_d(
+                .into_genotypes_and_phenotypes(&filter_stats, false, &general_args.n_threads)?;
+            tajima_d(
                 &genotypes_and_phenotypes,
                 &file_sync_phen.pool_sizes,
                 &window.window_size_bp,
@@ -680,6 +664,5 @@ fn tool() -> Result<(), GenericError> {
 fn main() {
     if let Err(e) = tool() {
         log::error!("{}", e);
-        std::process::exit(1);
     }
 }

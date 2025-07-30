@@ -1,7 +1,7 @@
 use crate::base::*;
 use ndarray::prelude::*;
 use std::fs::OpenOptions;
-use std::io::{self, prelude::*, Error, ErrorKind};
+use std::io::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Count the number of polymorphic sites per pool
@@ -39,7 +39,7 @@ pub fn theta_watterson(
     window_size_bp: &u64,
     window_slide_size_bp: &u64,
     min_loci_per_window: &u64,
-) -> Result<(Array2<f64>, Vec<usize>, Vec<usize>), Error> {
+) -> Result<(Array2<f64>, Vec<usize>, Vec<usize>), GenericError> {
     let (n, _) = genotypes_and_phenotypes
         .intercept_and_allele_frequencies
         .dim();
@@ -165,9 +165,7 @@ pub fn theta_watterson(
     let n_windows = out_idx_head.len();
     // Check if we have no windows containing at least the minimum number of loci
     if out_cov.len() < 1 {
-        let error_message =
-            "No window with at least ".to_owned() + &min_loci_per_window.to_string() + " SNPs.";
-        return Err(Error::new(ErrorKind::Other, error_message));
+        return Err(GenericError::Fatal(format!("No window with at least {} SNPs.", &min_loci_per_window)));
     }
     // Calculate Watterson's estimator per window
     let mut watterson_theta_per_pool_per_window: Array2<f64> =
@@ -249,7 +247,7 @@ pub fn watterson_estimator(
         .write(true)
         .append(false)
         .open(&fname_output)
-        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     log::info!("File created: {}", &fname_output);
     // Header
     let mut line: Vec<String> = vec!["Pool".to_owned(), "Mean_across_windows".to_owned()];

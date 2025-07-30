@@ -2,7 +2,7 @@
 
 use ndarray::prelude::*;
 use std::fs::File;
-use std::io::{self, prelude::*, BufReader, Error, ErrorKind};
+use std::io::{prelude::*, BufReader};
 use std::{str, vec};
 
 use crate::base::*;
@@ -82,7 +82,7 @@ impl Parse<Phen> for FilePhen {
                                 .parse::<f64>()
                                 .map_err(|e| {
                                     GenericError::Fatal(format!(
-                                        "T_T Error parsing the phenotype file. The trait value \"{}\" (column index: {}) could not be parsed as f64. Line: {}. Parse error: {}",
+                                        "Error parsing the phenotype file. The trait value \"{}\" (column index: {}) could not be parsed as f64. Line: {}. Parse error: {}",
                                         vec_line[trait_values_column_ids[j]],
                                         trait_values_column_ids[j],
                                         line,
@@ -120,22 +120,22 @@ impl Parse<Phen> for FilePhen {
             let reader = BufReader::new(file);
             let mut all_lines: Vec<String> = vec![];
             for line in reader.lines() {
-                all_lines.push(line.expect("T_T Phenotype file in GWAlpha format is missing some lines, e.g. Pheno_name, sig, MIN, MAX, perc and/or q."));
+                all_lines.push(line.map_err(|_e| GenericError::Fatal("Phenotype file in GWAlpha format is missing some lines, e.g. Pheno_name, sig, MIN, MAX, perc and/or q.".to_string()))?);
             }
             let _name = all_lines[0].split("=").collect::<Vec<&str>>()[1]
                 .replace(";", "")
                 .trim()
                 .to_string();
-            let sig = all_lines[1].split("=").collect::<Vec<&str>>()[1].replace(";", "").trim().parse::<f64>().expect("T_T Error parsing the standard deviation of the trait as f64 in the GWAlpha formatted phenotype file.");
-            let min = all_lines[2].split("=").collect::<Vec<&str>>()[1].replace(";", "").trim().parse::<f64>().expect("T_T Error parsing the minimum value of the trait as f64 in the GWAlpha formatted phenotype file.");
-            let max = all_lines[3].split("=").collect::<Vec<&str>>()[1].replace(";", "").trim().parse::<f64>().expect("T_T Error parsing the maximum value of the trait as f64 in the GWAlpha formatted phenotype file.");
+            let sig = all_lines[1].split("=").collect::<Vec<&str>>()[1].replace(";", "").trim().parse::<f64>().map_err(|e| GenericError::Fatal(format!("Error parsing the standard deviation of the trait as f64 in the GWAlpha formatted phenotype file: {}", e)))?;
+            let min = all_lines[2].split("=").collect::<Vec<&str>>()[1].replace(";", "").trim().parse::<f64>().map_err(|e| GenericError::Fatal(format!("Error parsing the minimum value of the trait as f64 in the GWAlpha formatted phenotype file: {}", e)))?;
+            let max = all_lines[3].split("=").collect::<Vec<&str>>()[1].replace(";", "").trim().parse::<f64>().map_err(|e| GenericError::Fatal(format!("Error parsing the maximum value of the trait as f64 in the GWAlpha formatted phenotype file: {}", e)))?;
             let perc = all_lines[4].split("=").collect::<Vec<&str>>()[1].replace(";", "").replace("[", "").replace("]", "").trim().to_string()
                                              .split(",").collect::<Vec<&str>>().into_iter().map(|x| x.trim().to_string())
-                                             .map(|x| x.parse::<f64>().expect("T_T Error parsing the pool percentiles as f64 in the GWAlpha formatted phenotype file."))
+                                             .map(|x| x.parse::<f64>().expect("Error parsing the pool percentiles as f64 in the GWAlpha formatted phenotype file."))
                                              .collect::<Vec<f64>>();
             let q = all_lines[5].split("=").collect::<Vec<&str>>()[1].replace(";", "").replace("[", "").replace("]", "").trim().to_string()
                                           .split(",").collect::<Vec<&str>>().into_iter().map(|x| x.trim().to_string())
-                                          .map(|x| x.parse::<f64>().expect("T_T Error parsing the pool quantiles as f64 in the GWAlpha formatted phenotype file."))
+                                          .map(|x| x.parse::<f64>().expect("Error parsing the pool quantiles as f64 in the GWAlpha formatted phenotype file."))
                                           .collect::<Vec<f64>>();
             // For ML
             let mut _perc0 = perc.clone();

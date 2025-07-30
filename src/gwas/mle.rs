@@ -103,7 +103,7 @@ impl Regression for UnivariateMaximumLikelihoodEstimation {
             Err(_) => {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "T_T Did not converge or something went terribly wrong!",
+                    "Did not converge or something went terribly wrong!",
                 ))
             } // Error occurs when the optimiser MoreThuenteLineSearch moves in the wrong direction
         };
@@ -310,13 +310,38 @@ pub fn mle_with_covariate(
     fname_input: &String,
     fname_output: &String,
 ) -> Result<String, GenericError> {
+    let mut fname_output = fname_output.to_owned();
+    if fname_output == "".to_owned() {
+        let time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+        let bname = fname_input
+            .split(".")
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .map(|a| a.to_owned())
+            .collect::<Vec<String>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<String>>()[1..]
+            .to_owned()
+            .into_iter()
+            .rev()
+            .collect::<Vec<String>>()
+            .join(".");
+        fname_output = bname.to_owned()
+            + "-mle_iter_with_kinship-"
+            + &time.to_string()
+            + ".csv";
+    }
     // Check that a output file can be created, but don't create it.
     let _ = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&fname_output)
         .and_then(|_| std::fs::remove_file(&fname_output))
-        .map_err(|e| GenericError::Fatal(format!("Cannot create output file: {}", e)))?;
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     // Check struct
     genotypes_and_phenotypes.check().unwrap();
     // Generate the covariate
@@ -368,9 +393,9 @@ pub fn mle_with_covariate(
     )
     .unwrap();
 
-    log::info!("allele_idx={:?}", allele_idx);
-    log::info!("phenotype_idx={:?}", phenotype_idx);
-    log::info!("covariate={:?}", covariate);
+    // log::info!("allele_idx={:?}", allele_idx);
+    // log::info!("phenotype_idx={:?}", phenotype_idx);
+    // log::info!("covariate={:?}", covariate);
     // Parallel OLS
     Zip::from(&mut beta)
         .and(&mut varb)
@@ -404,50 +429,23 @@ pub fn mle_with_covariate(
             *significance = pval_[(n_eigenvecs + 1, 0)];
         });
 
-    log::info!("y={:?}", y);
-    log::info!("g={:?}", g);
-    log::info!("beta={:?}", beta);
-    log::info!("pval={:?}", pval);
+    // log::info!("y={:?}", y);
+    // log::info!("g={:?}", g);
+    // log::info!("beta={:?}", beta);
+    // log::info!("pval={:?}", pval);
 
     // Write output
-    let mut fname_output = fname_output.to_owned();
-    if fname_output == "".to_owned() {
-        let time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs_f64();
-        let bname = fname_input
-            .split(".")
-            .collect::<Vec<&str>>()
-            .into_iter()
-            .map(|a| a.to_owned())
-            .collect::<Vec<String>>()
-            .into_iter()
-            .rev()
-            .collect::<Vec<String>>()[1..]
-            .to_owned()
-            .into_iter()
-            .rev()
-            .collect::<Vec<String>>()
-            .join(".");
-        fname_output = bname.to_owned()
-            + "-mle_iterative_xxt_"
-            + &(n_eigenvecs + 1).to_string()
-            + "_eigens-"
-            + &time.to_string()
-            + ".csv";
-    }
     // Instatiate output file
-    let error_writing_file = "Unable to create file: ".to_owned() + &fname_output;
     let mut file_out = OpenOptions::new()
         .create_new(true)
         .write(true)
         .append(false)
         .open(&fname_output)
-        .expect(&error_writing_file);
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     file_out
         .write_all(("#chr,pos,alleles,phenotype,statistic,pvalue\n").as_bytes())
         .unwrap();
+    log::info!("File created: {}", &fname_output);
     for j in 0..k {
         for i in 0..p {
             let line = vec![

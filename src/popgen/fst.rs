@@ -1,7 +1,7 @@
 use crate::base::*;
 use ndarray::{prelude::*, Zip};
 use std::fs::OpenOptions;
-use std::io::{self, prelude::*};
+use std::io::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Unbiased multi-allelic version of Fst similar to [Gautier et al, 2019](https://doi.org/10.1111/1755-0998.13557) which assumes biallelic loci
@@ -136,9 +136,8 @@ pub fn fst(
         .write(true)
         .append(false)
         .open(&fname_output)
-        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output, e)))?;
     log::info!("File created: {}", &fname_output);
-    log::info!("File created: {}", &fname_output_per_window);
     // Header
     let mut line: Vec<String> = vec!["".to_owned()];
     for pool in &genotypes_and_phenotypes.pool_names {
@@ -179,7 +178,9 @@ pub fn fst(
     // log::info!("windows_idx_tail={:?}", windows_idx_tail);
     // Take the means per window
     let n_windows = windows_idx_head.len();
-    assert!(n_windows > 0, "There were no windows defined. Please check the sync file, the window size, slide size, and the minimum number of loci per window.");
+    if n_windows <= 0 {
+        return Err(GenericError::Fatal("There were no windows defined. Please check the sync file, the window size, slide size, and the minimum number of loci per window.".to_string()))
+    }
     let mut fst_per_pool_x_pool_per_window: Array2<f64> =
         Array2::from_elem((n_windows, n * n), f64::NAN);
     for i in 0..n_windows {
@@ -209,9 +210,9 @@ pub fn fst(
         .create_new(true)
         .write(true)
         .append(false)
-        .open(&fname_output)
-        .map_err(|e| GenericError::Fatal(format!("Unable to create file {} because {}", &fname_output, e)))?;
-    log::info!("File created: {}", &fname_output);
+        .open(&fname_output_per_window)
+        .map_err(|e| GenericError::Fatal(format!("Unable to create {}: {}", &fname_output_per_window, e)))?;
+    log::info!("File created: {}", &fname_output_per_window);
     // Header
     let mut line: Vec<String> = vec!["chr".to_owned(), "pos_ini".to_owned(), "pos_fin".to_owned()];
     for j in 0..n {

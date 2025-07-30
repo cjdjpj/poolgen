@@ -17,4 +17,4 @@ gwas = gwas[gwas["pvalue"] < sig_threshold]
 
 output_path = Path(filename)
 gwas.to_csv(output_path)
-print("FILE MODIFIED: SNPs with insignificant associations removed from " + output_path.name + "", end="")
+print("File modified: SNPs with insignificant associations removed from " + output_path.name + "", end="")

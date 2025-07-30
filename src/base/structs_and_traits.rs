@@ -3,8 +3,7 @@
 use clap::Args;
 use crate::parse_valid_freq;
 use ndarray::prelude::*;
-use std::{io,fmt};
-use thiserror::Error;
+use std::io;
 
 #[derive(Debug, thiserror::Error, Clone)]
 #[error("{0}")]
@@ -172,12 +171,6 @@ pub struct MaximumLikelihoodBeta {
     pub percs_a0: Array1<f64>,
     pub percs_b: Array1<f64>,
     pub percs_b0: Array1<f64>,
-}
-
-// Struct for gudmc's maximum likelihood estimation for the distribution of Tajima's D which is assumed to be normally distributed centred on zero
-#[derive(Debug, Clone)]
-pub struct MaximumLikelihoodNormal {
-    pub q: Array1<f64>,
 }
 
 // Struct for regression objects

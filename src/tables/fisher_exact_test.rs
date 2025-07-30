@@ -1,5 +1,5 @@
 use ndarray::prelude::*;
-use std::io::{self, Error, ErrorKind};
+use std::io::{self};
 
 use crate::base::*;
 
