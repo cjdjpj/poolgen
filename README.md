@@ -107,3 +107,8 @@ GWAlpha format
 |heterozygosity                     |Compute heterozygosity/nucleotide diversity (π)|
 |watterson_estimator                |Compute Watterson's estimator of θ|
 |tajima_d                           |Compute Tajima's D|
+
+To get options for each utility:
+```bash
+./target/release/poolgen help <UTILITY>
+```
