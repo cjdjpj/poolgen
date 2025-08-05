@@ -17,7 +17,7 @@ gwas = gwas[gwas["pvalue"] < sig_threshold]
 
 gff_filename = sys.argv[2]
 gff_window_size = int(sys.argv[3])
-gff = pd.read_csv(gff_filename, sep = "\t", header=None)
+gff = pd.read_csv(gff_filename, sep="\t", header=None, comment='#')
 
 gff.columns = ["seqid", "source", "type", "start", "end", "score", "strand", "phase", "attributes"]
 
