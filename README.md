@@ -29,54 +29,56 @@ Quantitative and population genetics analyses using pool sequencing data (i.e. S
     ./target/release/poolgen -h
     ```
 
-## File formats
+## Genotype data formats
 
-> NOTE: Header line/s and comments should be prepended by '#'.
+> Note: Header line/s and comments should be prepended by '#'.
 
-### Pileup
+### Synchronised pileup (`.sync`)
+- an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
+- tab-delimited, one row per locus.
+- *Header line*: header line including the names of the samples or pools, i.e. `#chr\tpos\tref\t<id_1>\t<id_2>\t<id_3>\t<id_4>\t<id_5>`
+- *Column 1*: chromosome or scaffold name
+- *Column 2*: locus position 
+- *Column 3*: reference allele, e.g. A, T, C, G 
+- *Column/s 4 to n*: colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
+- See [`tests/test.sync`](./tests/test.sync) for an example.
 
-Summarised or piled up base calls of aligned reads to a reference genome.
+### Pileup (`.mpileup`, `.pileup`)
+- summarized base calls from aligned reads at each reference genome position.
+- tab-delimited, one row per locus.
+- *Column 1**: Chromosome, scaffold, or contig name.
+- **Column 2**: Locus position (1-based).
+- **Column 3**: Reference allele.
+- **Column 4**: Coverage (number of reads aligned to the locus).
+- **Column 5**: Read codes:
+  - `"."` / `","`: Reference allele on forward/reverse strand.
+  - `"A/T/C/G"` / `"a/t/c/g"`: Alternate alleles on forward/reverse strand.
+  - `+/-[0-9]+[ACGTNacgtn]`: Insertions/deletions.
+  - `"^"`: Start of a read (followed by mapping quality).
+  - `"$"`: End of a read.
+  - `"*"`: Deleted or missing base.
+- *Column 6*: Base qualities (ASCII-encoded, calculated as `10^(-((ascii - 33) / 10))`).
+- *Columns 7–3n*: Per-pool coverage, reads, and base qualities (3 columns per pool).
+- See [`tests/test.pileup`](./tests/test.pileup) for an example.
 
-- *Column 1*:       name of chromosome, scaffold or contig
-- *Column 2*:       locus position
-- *Column 3*:       reference allele
-- *Column 4*:       coverage, i.e. number of times the locus was sequenced
-- *Column 5*:       read codes, i.e. "." ("," for reverse strand) reference allele; "A/T/C/G" ("a/t/c/g" for reverse strand) alternative alleles; "`\[+-][0-9]+[ACGTNacgtn]`" insertions and deletions; "^[" start of read including the mapping quality score; "$" end of read; and "*" deleted or missing locus.
-- *Column 6*:       base qualities encoded as the `10 ^ -((ascii value of the character - 33) / 10)`
-- *Columns 7 - 3n*: coverages, reads, and base qualities of *n* pools (3 columns per pool).
+### Variant call format (`.vcf`)
 
-Pileup from alignments can be generated similar to below:
-```shell
-samtools mpileup \
-    -b /list/of/samtools/-/indexed/bam/or/cram/files.txt \
-    -l /list/of/SNPs/in/tab/-/delimited/format/or/bed/-/like.txt \
-    -d 100000 \
-    -q 30 \
-    -Q 30 \
-    -f /reference/genome.fna \
-    -o /output/file.pileup
-```
+- canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and may or may not have genotypes called (e.g. generated via bctools mpileup -a AD,DP ...). If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool.
+- See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
+- The allele depth information (`AD`; i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters) is used to calculate allele frequencies.
+- If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. If both `GT` and `AD` fields are present, then the `AD` field takes priority.
+- See [`tests/test.vcf`](./tests/test.vcf) for an example.
 
-### Variant call format (vcf)
+## Phenotypes (required)
 
-Canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and genotype calls are not required since allele frequencies from allele depth will be used. The input vcf file can be generated with bcftools mpileup like: `bcftools mpileup -a AD...`. The [`vcf2sync`](#vcf2sync) utility is expected to work with vcf versions 4.2 and 4.3. See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
+Standard format
+-  A simple delimited file, e.g. "csv" or "tsv"
+-  *Column 1*: Pool/sample IDs
+-  *Column 2*: Pool sizes (or 1 for individuals)
+-  *Column 3+*: Phenotypic values. (must have at least one)
 
-### Sync
-
-An extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
-
-- *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
-- *Column 1*:       chromosome or scaffold name
-- *Column 2*:       locus position 
-- *Column 3*:       reference allele, e.g. A, T, C, G 
-- *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
-
-### Phenotypes (required)
-
-1. A simple delimited file, e.g. "csv" or "tsv" with a column for individual IDs, pool sizes, and at least one column for the phenotypic values.
-
-2. GWAlpha-compatible text file (i.e. "py"):
-
+GWAlpha format 
+- GWAlpha compatible text file (i.e. "py"):
 - *Line 1*: phenotype name
 - *Line 2*: standard deviation of the phenotype across pools or for the entire population
 - *Line 3*: minimum phenotype value
