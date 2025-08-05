@@ -34,7 +34,7 @@ filtered = merged[
 gff = filtered.drop(columns='pos').drop_duplicates().reset_index(drop=True)
 
 output_path = Path(gff_filename)
-output_path = output_path.with_stem(output_path.stem + "_GWAS_SIG_SNPS")
+output_path = output_path.with_name(output_path.stem + "_GWAS_SIG_SNPS" + output_path.suffix)
 gff.to_csv(output_path, sep="\t", header=False, index=False, quoting=3)
 
 print("File created: " + output_path.name, end="")
