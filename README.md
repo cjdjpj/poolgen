@@ -46,11 +46,11 @@ Quantitative and population genetics analyses using pool sequencing data (i.e. S
 ### Pileup (`.mpileup`, `.pileup`)
 - summarized base calls from aligned reads at each reference genome position.
 - tab-delimited, one row per locus.
-- *Column 1**: Chromosome, scaffold, or contig name.
-- **Column 2**: Locus position (1-based).
-- **Column 3**: Reference allele.
-- **Column 4**: Coverage (number of reads aligned to the locus).
-- **Column 5**: Read codes:
+- *Column 1*: Chromosome, scaffold, or contig name.
+- *Column 2*: Locus position (1-based).
+- *Column 3*: Reference allele.
+- *Column 4*: Coverage (number of reads aligned to the locus).
+- *Column 5*: Read codes:
   - `"."` / `","`: Reference allele on forward/reverse strand.
   - `"A/T/C/G"` / `"a/t/c/g"`: Alternate alleles on forward/reverse strand.
   - `+/-[0-9]+[ACGTNacgtn]`: Insertions/deletions.
@@ -76,6 +76,7 @@ Standard format
 -  *Column 1*: Pool/sample IDs
 -  *Column 2*: Pool sizes (or 1 for individuals)
 -  *Column 3+*: Phenotypic values. (must have at least one)
+-  See [`tests/test.csv`](./tests/test.csv) for an example.
 
 GWAlpha format 
 - GWAlpha compatible text file (i.e. "py"):
@@ -88,66 +89,21 @@ GWAlpha format
 
 ## Utilities
 
-### pileup2sync
-
-Convert pileup (`*.pileup`, `*.mpileup`) into a synchronised pileup format (`*.sync`). 
-
-### vcf2sync
-
-Convert variant call format (`*.vcf`) into a synchronised pileup format (`*.sync`), using allele depths to estimate allele frequencies and omitting genotype classes information including genotype likelihoods.
-
-### sync2csv
-
-Convert synchronised pileup format (`*.sync`) into a matrix ($n$ pools x $p$ alleles across loci) and write into a comma-delimited (csv) file.
-
-### fisher_exact_test
-
-Perform Fisher's exact test per locus.
-
-### chisq_test
-
-Perform Chi-square test per locus.
-
-### pearson_corr
-
-Calculate correlations between allele frequencies per locus and phenotype data.
-
-### ols_iter
-
-Perform ordinary linear least squares regression between allele frequencies and phenotypes per locus, independently.
-
-### ols_iter_with_kinship
-
-Perform ordinary linear least squares regression between allele frequencies and phenotypes using a kinship matrix ($XX' \over p$) as a covariate per locus, independently.
-
-### mle_iter
-
-Perform linear regression between allele frequencies and phenotypes using maximum likelihood estimation per locus, independently.
-
-### mle_iter_with_kinship
-
-Perform linear regression between allele frequencies and phenotypes using maximum likelihood estimation a kinship matrix ($XX' \over p$) as a covariate per locus, independently.
-
-### gwalpha
-
-Perform parametric genomewide association study using pool sequencing data, i.e. pool-GWAS. Refer to [Fournier-Level, et al, 2017](https://academic.oup.com/bioinformatics/article/33/8/1246/2729762) for more details.
-
-### genomic_prediction_cross_validation
-
-Perform genomic prediction cross-validation using various models including ordinary least squares (OLS), ridge regression (RR), least absolute shrinkage and selection operator (LASSO), and elastic-net ([glmnet](https://glmnet.stanford.edu/articles/glmnet.html)).
-
-### fst
-
-Estimate $F_{st}$/fixation index between pools using unbiased estimates of heterozygosity. Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated.
-
-### heterozygosity
-
-Estimates $\pi$ or heterozygosity within populations using an unbiased method ($\pi$ or $\theta_{\pi}=4N_{e}\mu$ - similar to [Korunes & Samuk 2019](https://doi.org/10.1111/1755-0998.13326). Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated. 
-
-### watterson_estimator
-
-Estimates of Watterson's estimator of $\theta$. Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated. 
-
-### tajima_d
-
-Computes [Tajima's D](https://en.wikipedia.org/wiki/Tajima%27s_D) per sliding (overlapping/non-overlapping) window. Mean genome-wide estimates, and per sliding (overlapping/non-overlapping) window estimates are generated. 
+| Utility | Description |
+| --- | --- |
+|pileup2sync                        |Convert a pileup file into a synchronised pileup file (with a header row)|
+|vcf2sync                           |Convert a vcf file into a synchronised pileup file (with a header row)|
+|sync2csv                           |Convert a synchronised pileup file (sync format) into a csv of allele frequencies|
+|fisher_exact_test                  |Perform Fisher's exact test per locus|
+|chisq_test                         |Perform Chi-squared test per locus|
+|pearson_corr                       |Compute Pearson's correlation between phenotypes and allele frequencies per locus|
+|ols_iter                           |Compute genome-wide association (GWAS) per locus using ordinary least squares (OLS) regression|
+|ols_iter_with_kinship              |Compute GWAS with OLE, but controlling for kinship|
+|mle_iter                           |Compute genome-wide association (GWAS) per locus using maximum likelihood estimation (MLE)|
+|mle_iter_with_kinship              |Compute GWAS with MLE, but controlling for kinship|
+|gwalpha                            |Parametric allele effect estimation using Pool-seq data|
+|genomic_prediction_cross_validation|Perform genomic prediction with cross-validation|
+|fst                                |Compute Fst/fixation index between populations|
+|heterozygosity                     |Compute heterozygosity/nucleotide diversity (π)|
+|watterson_estimator                |Compute Watterson's estimator of θ|
+|tajima_d                           |Compute Tajima's D|
