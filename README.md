@@ -86,6 +86,7 @@ GWAlpha format
 - *Line 4*: maximum phenotype value
 - *Line 5*: cummulative pool sizes percentiles (e.g. 0.2,0.4,0.6,0.8,1.0)
 - *Line 6*: phenotype values corresponding to each percentile (e.g. 0.16,0.20,0.23,0.27,0.42)
+-  See [`tests/test.py`](./tests/test.py) for an example.
 
 ## Utilities
 
