@@ -359,13 +359,13 @@ pub trait LoadAll {
         end: &u64,
         filter_stats: &FilterStats,
         keep_n_minus_1: bool,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)>; // Allele frequencies and counts across pools and alleles per locus
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), GenericError>; // Allele frequencies and counts across pools and alleles per locus
     fn load(
         &self,
         filter_stats: &FilterStats,
         keep_n_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)>; // Allele frequencies and counts across pools and alleles per locus
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), GenericError>; // Allele frequencies and counts across pools and alleles per locus
     fn into_genotypes_and_phenotypes(
         &self,
         filter_stats: &FilterStats,

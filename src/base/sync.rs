@@ -1,4 +1,5 @@
 use crate::base::*;
+use std::panic;
 use ndarray::prelude::*;
 use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*, BufReader, BufWriter, Error, ErrorKind, SeekFrom};
@@ -987,7 +988,7 @@ impl LoadAll for FileSyncPhen {
         end: &u64,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), GenericError> {
         // Input syn file
         let fname = self.filename_sync.clone();
 
@@ -1025,8 +1026,8 @@ impl LoadAll for FileSyncPhen {
                         log::warn!("Line {} ignored: {}", line_number, msg);
                         continue;
                     }
-                    GenericError::Fatal(_msg) => {
-                        std::process::exit(1);
+                    GenericError::Fatal(msg) => {
+                        return Err(GenericError::Fatal(msg));
                     }
                 },
             };
@@ -1057,10 +1058,10 @@ impl LoadAll for FileSyncPhen {
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), GenericError> {
         let fname = self.filename_sync.clone();
         // Find the positions whereto split the file into n_threads pieces
-        let chunks = find_file_splits(&fname, n_threads).unwrap();
+        let chunks = find_file_splits(&fname, n_threads)?;
         log::info!("Multithreading chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
         // Instantiate thread object for parallel execution
@@ -1078,12 +1079,12 @@ impl LoadAll for FileSyncPhen {
             let filter_stats = filter_stats.clone();
             let thread_ouputs_freq_clone = thread_ouputs_freq.clone(); // Mutated within the current thread worker
             let thread_ouputs_cnts_clone = thread_ouputs_cnts.clone(); // Mutated within the current thread worker
-            let thread = std::thread::spawn(move || {
+            let thread = std::thread::spawn(move || -> Result<(), GenericError> {
                 let (mut freq, mut cnts) = self_clone
-                    .per_chunk_load(&start, &end, &filter_stats, keep_p_minus_1)
-                    .unwrap();
+                    .per_chunk_load(&start, &end, &filter_stats, keep_p_minus_1)?;
                 thread_ouputs_freq_clone.lock().unwrap().append(&mut freq);
                 thread_ouputs_cnts_clone.lock().unwrap().append(&mut cnts);
+                Ok(())
             });
             thread_objects.push(thread);
         }
@@ -1120,7 +1121,7 @@ impl LoadAll for FileSyncPhen {
         keep_p_minus_1: bool,
         n_threads: &usize,
     ) -> Result<GenotypesAndPhenotypes, GenericError> {
-        let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).unwrap();
+        let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads)?;
         let n = self.pool_names.len();
         let m = freqs.len(); // total number of loci
                              // Find the total number of alleles across all loci
@@ -1142,11 +1143,9 @@ impl LoadAll for FileSyncPhen {
         if freqs.len() != cnts.len() {
             return Err(GenericError::Fatal("Frequencies and counts not the same length".to_string()))
         }
-        assert_eq!(
-            freqs.len(),
-            cnts.len(),
-            "Frequencies and counts not the same length."
-        );
+        if freqs.len() != cnts.len() {
+            return Err(GenericError::Fatal("Frequencies and counts not the same length.".to_string()))
+        }
         for idx in 0..freqs.len() {
             // Allele frequencies
             let f = &freqs[idx];

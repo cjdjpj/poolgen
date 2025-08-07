@@ -24,8 +24,7 @@ pub fn tajima_d(
             window_size_bp,
             window_slide_size_bp,
             min_loci_per_window,
-        )
-        .unwrap();
+        )?;
     // log::info!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
     let n_pools = watterson_theta_per_pool_per_window.ncols();
     let n_windows = watterson_theta_per_pool_per_window.nrows();
@@ -35,8 +34,7 @@ pub fn tajima_d(
         window_size_bp,
         window_slide_size_bp,
         min_loci_per_window,
-    )
-    .unwrap();
+    )?;
     // log::info!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
     // log::info!("watterson_theta_per_pool_per_window={:?}", watterson_theta_per_pool_per_window);
     // log::info!("pi_per_pool_per_window={:?}", pi_per_pool_per_window);

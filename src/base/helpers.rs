@@ -90,6 +90,9 @@ pub fn find_file_splits(fname: &String, n_threads: &usize) -> Result<Vec<u64>, G
     let _ = file.seek(SeekFrom::End(0));
     let mut reader = BufReader::new(file);
     let end = reader.seek(SeekFrom::Current(0)).unwrap();
+    if *n_threads == 0 {
+        return Err(GenericError::Fatal(("Number of threads cannot be 0".to_string())))
+    }
     let mut out = (0..end)
         .step_by((end as usize) / n_threads)
         .collect::<Vec<u64>>();
